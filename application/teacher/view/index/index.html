@@ -1,0 +1,259 @@
+{extend name="common/base"/}
+{block name="link"}
+<link href="__STATIC__/css/plugins/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+* {
+    touch-action: pan-y;
+}
+.main-advisory-content
+{   width: 95%;
+    overflow: hidden;/*超出部分隐藏*/
+    white-space: nowrap;/*不换行*/
+    text-overflow:ellipsis;/*超出部分文字以...显示*/
+}
+    #add_advisory {
+        border: 1px black;
+    }
+</style>
+{/block}
+{block name="body"}
+<div class="mui-off-canvas-wrap mui-draggable">
+    <!-- 主页面容器 -->
+    <div class="mui-inner-wrap">
+        <!-- 主页面标题 -->
+        <header class="mui-bar mui-bar-nav">
+            <div id="add_advisory">
+                <a class="mui-action-back mui-icon iconfont icon-tuichu mui-pull-left add-advisory"></a>
+            </div>
+            <h1 class="mui-title" id="title">学生考核</h1>
+            <a style="width:10%; margin:0px;float: right;" href="#popover" id="openPopover" class="mui-icon iconfont icon-shaixuan"></a>
+        </header>
+        <!-- 主页面内容容器 -->
+        <div id="refreshContainer" class="mui-content mui-scroll-wrapper">
+            <div class="mui-scroll">
+                <form>
+                    <div class="mui-input-row mui-search" id="input-search">
+                        <input type="search" id="search" class="mui-input-clear" placeholder="搜索"  autocomplete="off" style="margin-bottom:0px;">
+                    </div>
+                </form>
+                <!-- 主界面具体展示内容 -->
+                <ul class="mui-table-view mui-table-view-chevron" id="main-content">
+                </ul>
+            </div>
+        </div>
+        <div class="mui-off-canvas-backdrop"></div>
+    </div>
+</div>
+{if isset($cateNow)}
+<script>var cateNow = "{$cateNow}"</script>
+{else /}
+<script>var cateNow = "0"</script>
+{/if}
+<div id="popover" class="mui-popover">
+    <ul class="mui-table-view mui-table-view-radio">
+        <!--<li class="mui-table-view-cell mui-selected" data-content="0" id="all-check">-->
+            <!--<a class="mui-navigate-right">全部</a>-->
+        <!--</li>-->
+        {foreach $category as $key=>$value}
+            {if $key==0}
+            <li class="mui-table-view-cell mui-selected category-old category-old-{$value.id}" data-content="{$value.id}">
+                <script>var category = "{$value.id}"</script>
+            {else/}
+            <li class="mui-table-view-cell category-old category-old-{$value.id}" data-content="{$value.id}">
+            {/if}
+                <a class="mui-navigate-right">{$value.title}</a>
+            </li>
+        {/foreach}
+    </ul>
+</div>
+{/block}
+{block name="script"}
+<script>
+    var isOver = false;//是否加载完
+    var page = 1;
+    var limit = 15;
+    var param = '';
+    category = cateNow == 0 ? category : cateNow;
+    jQuery(document).ready(function () {
+        mui.init({
+            pullRefresh : {
+                container:"#refreshContainer",//下拉刷新容器标识，querySelector能定位的css选择器均可，比如：id、.class等
+                up : {
+                    height:100,//可选,默认50.触发下拉刷新拖动距离,
+                    auto: true,//可选,默认false.首次加载自动下拉刷新一次
+                    contentdown : "下拉可以刷新",//可选，在下拉可刷新状态时，下拉刷新控件上显示的标题内容
+                    contentover : "释放立即刷新",//可选，在释放可刷新状态时，下拉刷新控件上显示的标题内容
+                    contentrefresh : "正在加载...",//可选，正在刷新状态时，下拉刷新控件上显示的标题内容
+                    contentnomore:'我也是有底线的...',
+                    callback :pullupRefresh //必选，刷新函数，根据具体业务来编写，比如通过ajax从服务器获取新数据；
+                }
+            }
+        });
+        if (cateNow != 0) {
+            var categoryElement = $(".category-old");
+            $.each(categoryElement, function (key, val) {
+                var content = 'mui-table-view-cell category-old category-old-' + val.getAttribute("data-content");
+                val.setAttribute("class",content);
+            });
+            $(".category-old-" + cateNow).attr("class","mui-table-view-cell mui-selected category-old");
+        }
+        mui('.mui-scroll-wrapper').scroll();
+        function pullupRefresh() {
+            setTimeout(function () {
+                mui('#refreshContainer').pullRefresh().endPullupToRefresh((isOver)); //参数为true代表没有更多数据了。
+                getStudentData();//ajax
+            }, 1000);
+        }
+        mui('#main-content').on('tap','a',function(){
+           document.location.href = this.href;
+        });
+        mui('#add_advisory').on('tap','a',function(){
+            document.location.href = "{:url('login/out')}";
+            return false;
+        });
+
+        mui("#input-search").on("tap","span",function () {
+            if (param !== '') {
+                param = '';
+                getStudentData();
+            }
+        })
+    });
+
+    //筛选
+    var list = document.querySelector('.mui-table-view.mui-table-view-radio');
+    list.addEventListener('selected',function(e){
+        var formData = {};
+        formData = $('form').serializeObject()
+        category = e.detail.el.getAttribute("data-content");
+        formData['limit'] = 15;
+        formData['page'] = 1;
+        ajaxPost(formData);
+        mui('#popover').popover('toggle',document.getElementById("openPopover"));
+    });
+
+    $("#search").on('keypress',function(e) {
+        var keycode = e.keyCode;
+        var searchName = $(this).val();
+        if(keycode == '13') {
+            e.preventDefault();
+            //请求搜索接口
+            var formData = $('form').serializeObject();
+            param = searchName;
+            formData['search'] = searchName;
+            return ajaxPost(formData);
+        }
+    });
+
+
+    function getStudentData() {
+        var formData = {};
+        formData = $('form').serializeObject();
+        formData['limit'] = limit;
+        formData['page'] = page;
+        ajaxPost(formData);
+    }
+
+    function ajaxPost(formData) {
+        // var index = layer.load(2);
+        formData['category'] = category;
+        $.ajax({
+            type: 'post',
+            dataType: 'json',
+            data: formData,
+            url: "{:url('index/getStudentList')}",
+            complete: function () {
+                // layer.close(index);
+            },
+            success: function (res) {
+                $("#main-content").html('');
+                if (res.code === 200) {
+                    var b = $.isEmptyObject(res.data);
+                    $.each(res.data.data, function (key, val) {
+                        var ele = '';
+                        var url = "";
+                        if (val.is_over !== '未填写') {
+                            ele = '<span class="mui-badge mui-badge-success">已填写</span>\n';
+                            url = "{:url('index/detailEdit',array('id'=>'P_id','c_id'=>'C_id'))}";
+                            url = url.replace("P_id", val.code);
+                            url = url.replace("C_id", category);
+                        } else {
+                            ele = '<span class="mui-badge mui-badge-red">待填写</span>\n';
+                            url = "{:url('index/detail',array('id'=>'P_id','c_id'=>'C_id'))}";
+                            url = url.replace("P_id", val.code);
+                            url = url.replace("C_id", category);
+                        }
+                        $("#main-content").append('<li class="mui-table-view-cell">\n' +
+                            '<a class="mui-navigate-right" href="'+ url +'">\n' +
+                            '<div class="mui-media-body main-advisory-content">\n 「' +
+                            val.code+
+                            '」'+
+                            val.name+
+                            // '<p class=\'mui-ellipsis-2\' style="margin-top: 5px;">&emsp;创建时间：'+ val.created_at +'</p>\n' +
+                            '</div>\n' +
+                            ele +
+                            '</a>\n' +
+                            '</li>');
+                    });
+                    //判断是否还有数据,若小于每次加载条数,结束
+                    if(res.data.length < (limit * page)){
+                        isOver = true;
+                    }
+                    //每次加载结束之后，如果还有数据则++
+                    if(isOver == false){
+                        page++;
+                    }
+                } else {
+                    layer.open({
+                        title: '错误',
+                        content: '获取数据错误',
+                        time: 2000,
+                        icon: 5
+                    })
+                }
+            },
+            error: function (xhr) {
+                layer.open({
+                    title: '',
+                    content: '操作失败，请联系管理员(2秒后自动关闭)',
+                    time: 2000,
+                    icon: 5
+                })
+            }
+        });
+    }
+
+
+    function getAdvisoryDetail(url) {
+//        var index = layer.load(2);
+        $.ajax({
+            type: 'get',
+            dataType: 'json',
+            url: url,
+            complete: function () {
+//                layer.close(index);
+            },
+            success: function (res) {
+                $("#detailAdvisory").html('');
+                if (res.code === 200) {
+                    $("#cateName").text(res.data.name);
+                    $("#advisory_title").text(res.data.title);
+                    $("#advisory_content").text(res.data.content == '' ? '暂无问答' : res.data.content);
+                } else {
+
+                }
+            },
+            error: function (xhr) {
+                layer.open({
+                    title: '',
+                    content: '操作失败，请联系管理员(2秒后自动关闭)',
+                    time: 2000,
+                    icon: 5
+                })
+            }
+        });
+    }
+</script>
+{/block}

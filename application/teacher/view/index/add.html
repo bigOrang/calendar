@@ -1,0 +1,239 @@
+{extend name="common/form"/}
+{block name="link"}
+<link href="__STATIC__/css/plugins/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.picker.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.poppicker.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+* {
+    touch-action: pan-y;
+}
+.main-advisory-content
+{   width: 95%;
+    overflow: hidden;/*超出部分隐藏*/
+    white-space: nowrap;/*不换行*/
+    text-overflow:ellipsis;/*超出部分文字以...显示*/
+}
+.radio_inline{
+     display: inline-block;
+     width: 65%;
+     }
+ .radio_inline label{
+
+     width: 20%;
+     padding-left: 40px;
+     padding-right: 40px;
+     }
+ .radio_inline input[type=radio]{
+     width: 15%;
+ right: auto;
+     }
+
+
+ /*//换个样式*/
+ .change .mui-radio input[type='radio']:checked:before{
+       content:'\e442';
+       color:red;
+       }
+</style>
+{/block}
+{block name="body"}
+<div class="mui-off-canvas-wrap mui-draggable">
+    <!-- 主页面容器 -->
+    <div class="mui-inner-wrap">
+        <!-- 主页面标题 -->
+        <header class="mui-bar mui-bar-nav">
+            <a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left" id="go-back"></a>
+            <h1 class="mui-title" id="title">新增咨询</h1>
+        </header>
+        <!--<nav class="mui-bar mui-bar-tab" id="nav">-->
+            <!--<a class="mui-tab-item jump" data-url="isCommon=1" id="common-advisory" onclick="jumpIndex(1)">-->
+                <!--<span class="mui-icon iconfont icon-rencaifuwu"></span>-->
+                <!--<span class="mui-tab-label">公众咨询</span>-->
+            <!--</a>-->
+            <!--<a class="mui-tab-item jump"  data-url="isCommon=0" id="my-advisory" onclick="jumpIndex(0)">-->
+                <!--<span class="mui-icon iconfont icon-xingming"></span>-->
+                <!--<span class="mui-tab-label">我的咨询</span>-->
+            <!--</a>-->
+            <!--<a class="mui-tab-item  mui-active" data-url="add" id="add_advisory" href="{:url('index/add')}">-->
+                <!--<span class="mui-icon iconfont icon-xinzengmingxi"></span>-->
+                <!--<span class="mui-tab-label">新建咨询</span>-->
+            <!--</a>-->
+        <!--</nav>-->
+        <!-- 主页面内容容器 -->
+        <div id="refreshContainer" class="mui-content mui-scroll-wrapper">
+            <div class="mui-scroll">
+                <!-- 主界面具体展示内容 -->
+                <form class="mui-input-group" data-parsley-validate="">
+                    <div class="mui-input-row">
+                        <label>咨询分类 <span style="color:red">*</span></label>
+                        <input type="hidden" name="c_id" id="c_id">
+                        <input type="text" name="" id='showUserPicker' class="mui-input-clear" placeholder="请选择咨询分类">
+                    </div>
+                    <div class="mui-input-row">
+                        <label>咨询标题 <span style="color:red">*</span></label>
+                        <input type="text" name="title" id="titleC" class="mui-input-clear" maxlength="20" placeholder="请输入咨询标题" autocomplete="off">
+                    </div>
+                    <div class="mui-input-row">
+                        <label>他人查看 <span style="color:red">*</span></label>
+                        <span class="radio_inline mui-radio">
+                            <input name="is_show" type="radio" id="radio_allow" checked value="1">
+                            <label for="radio_allow">是</label>
+                            <input name="is_show" type="radio" id="radio_refuse" value="0">
+                            <label for="radio_refuse">否</label>
+                        </span>
+                    </div>
+                    <div id='userResult' class="ui-alert"></div>
+                    <div class="mui-button-row">
+                        <input type="hidden" value="{$category}" id="category">
+                        <button type="reset" class="mui-btn mui-btn-danger" >重置</button>
+                        <button type="submit" class="mui-btn mui-btn-primary" >确认</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="mui-off-canvas-backdrop"></div>
+    </div>
+</div>
+{/block}
+{block name="script"}
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.picker.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.poppicker.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/common.js"></script>
+<script>
+    var isCommon = 1;
+    jQuery(document).ready(function () {
+        mui.init();
+        mui('.mui-scroll-wrapper').scroll();
+        // mui('#go-back').on('tap','a',function(){
+        //     // console.log('window.history.back()', window.history.back())
+        //     window.history.back()
+        // });
+    });
+    Parsley.on('form:submit', function(e) {
+        var formData = $('form').serializeObject();
+        var error = '';
+        console.log('formdata', formData)
+        if (formData.is_show === '') {
+            error = '请选择【是否允许他人查看】选项';
+        }
+        if (formData.title === '') {
+            error = '请输入【咨询标题】具体内容 ';
+        }
+        if (isEmojiCharacter(formData.title) === true) {
+            error = '【咨询标题】内容中包括特殊字符';
+        }
+        if (formData.title.length > 20) {
+            error = '【咨询标题】内容长度过长[20字符]';
+        }
+        if (formData.c_id === '') {
+            error = '请选择【咨询分类】选项';
+        }
+        if (error !== '') {
+            mui.alert(error, '哎呀，出错了', function() {
+            });
+            return false;
+        }
+        return muiAjaxPostData(formData, "{:url('index/add')}");
+    });
+</script>
+<script>
+    function isEmojiCharacter(substring){
+        if(substring){
+            var reg = new RegExp("[~#^$@%&!?%*]", 'g');
+            if (substring.match(reg)) {
+                return true;
+            }
+            for ( var i = 0; i < substring.length; i++) {
+                var hs = substring.charCodeAt(i);
+                if (0xd800 <= hs && hs <= 0xdbff) {
+                    if (substring.length > 1) {
+                        var ls = substring.charCodeAt(i + 1);
+                        var uc = ((hs - 0xd800) * 0x400) + (ls - 0xdc00) + 0x10000;
+                        if (0x1d000 <= uc && uc <= 0x1f77f) {
+                            return true;
+                        }
+                    }
+                } else if (substring.length > 1) {
+                    var ls = substring.charCodeAt(i + 1);
+                    if (ls == 0x20e3) {
+                        return true;
+                    }
+                } else {
+                    if (0x2100 <= hs && hs <= 0x27ff) {
+                        return true;
+                    } else if (0x2B05 <= hs && hs <= 0x2b07) {
+                        return true;
+                    } else if (0x2934 <= hs && hs <= 0x2935) {
+                        return true;
+                    } else if (0x3297 <= hs && hs <= 0x3299) {
+                        return true;
+                    } else if (hs == 0xa9 || hs == 0xae || hs == 0x303d || hs == 0x3030
+                        || hs == 0x2b55 || hs == 0x2b1c || hs == 0x2b1b
+                        || hs == 0x2b50) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+</script>
+<script>
+    var setData;
+        (function($){
+        $(document).ready(function(){
+            setData = $("#category").val();
+        });
+    })(jQuery);
+    (function($, doc) {
+        $.init();
+        $.ready(function() {
+            //普通示例
+            var userPicker = new $.PopPicker();
+            userPicker.setData(JSON.parse(setData));
+            var showUserPickerButton = doc.getElementById('showUserPicker');
+            var c_idButton = doc.getElementById('c_id');
+            showUserPickerButton.addEventListener('tap', function(event) {
+                userPicker.show(function(items) {
+                    showUserPicker.value = items[0].text;
+                    c_idButton.value = items[0].value;
+                    //返回 false 可以阻止选择框的关闭
+                    //return false;
+                });
+            }, false);
+            //-----------------------------------------
+            //级联示例
+//            var cityPicker = new $.PopPicker({
+//                layer: 2
+//            });
+//            cityPicker.setData(cityData);
+//            var showCityPickerButton = doc.getElementById('showCityPicker');
+//            var cityResult = doc.getElementById('cityResult');
+//            showCityPickerButton.addEventListener('tap', function(event) {
+//                cityPicker.show(function(items) {
+//                    cityResult.innerText = "你选择的城市是:" + items[0].text + " " + items[1].text;
+//                    //返回 false 可以阻止选择框的关闭
+//                    //return false;
+//                });
+//            }, false);
+            //-----------------------------------------
+            //     //级联示例
+//            var cityPicker3 = new $.PopPicker({
+//                layer: 3
+//            });
+//            cityPicker3.setData(cityData3);
+//            var showCityPickerButton = doc.getElementById('showCityPicker3');
+//            var cityResult3 = doc.getElementById('cityResult3');
+//            showCityPickerButton.addEventListener('tap', function(event) {
+//                cityPicker3.show(function(items) {
+//                    cityResult3.innerText = "你选择的城市是:" + (items[0] || {}).text + " " + (items[1] || {}).text + " " + (items[2] || {}).text;
+//                    //返回 false 可以阻止选择框的关闭
+//                    //return false;
+//                });
+//            }, false);
+        });
+    })(mui, document);
+</script>
+
+{/block}

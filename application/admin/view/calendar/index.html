@@ -1,0 +1,74 @@
+{extend name="common/base"/}
+{block name="link"}
+<link href="__STATIC__/css/plugins/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+    #special-search-box .form-group{
+        margin-top: 10px;
+        margin-bottom: 0;
+    }
+</style>
+{/block}
+{block name="body"}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="example-wrap">
+                <h4 class="example-title">校历管理</h4>
+                <div class="example">
+                    <div id="toolbar" class="btn-group">
+                    </div>
+                    <table id="grid"  data-toggle="table" class="table-bordered ">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{/block}
+{block name="script"}
+<script>
+    var flg = true;
+    var searchTip = '请输入校历标题';
+    var columns = [{
+        field: 'id',
+        title: '序号',
+        sortable: false
+    }, {
+        field: 'title',
+        title: '校历标题',
+        sortable: false
+    }, {
+        field: 'start_time',
+        title: '开始时间',
+        sortable: false
+    }, {
+        field: 'end_time',
+        title: '结束时间',
+        sortable: false
+    }, {
+        field: 'end_holiday_date',
+        title: '假期结束日期',
+        sortable: false
+    }, {
+        field: 'do',
+        title: '操作',
+        formatter: function(value,row,index) {
+            var e = "<a onclick=jump(" + row.id +")>详情</a>&emsp;";
+            return e;
+        }
+    }];
+    var table = new BSTable('grid', "{:url('calendar/index')}", columns, searchTip);
+    table.setPaginationType('server');
+    table.init();
+
+    function jump(id) {
+        var url = "{:url('calendar/detail',array('id'=>'P_id'))}";
+        url =  url.replace("P_id",id);
+        window.location = url;
+        // dialog('详情', url, 800, 450);
+    }
+</script>
+{/block}

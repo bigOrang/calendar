@@ -1,0 +1,185 @@
+{extend name="common/form"/}
+{block name="link"}
+<link href="__STATIC__/css/plugins/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.picker.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.poppicker.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+* {
+    touch-action: pan-y;
+}
+.main-advisory-content
+{   width: 95%;
+    overflow: hidden;/*超出部分隐藏*/
+    white-space: nowrap;/*不换行*/
+    text-overflow:ellipsis;/*超出部分文字以...显示*/
+}
+    #add_advisory {
+        border: 1px black;
+    }
+</style>
+{/block}
+{block name="body"}
+<div class="mui-off-canvas-wrap mui-draggable">
+    <!-- 主页面容器 -->
+    <div class="mui-inner-wrap">
+        <!-- 主页面标题 -->
+        <header class="mui-bar mui-bar-nav">
+            <h1 class="mui-title" id="title">请选择需要考核的班级和年级</h1>
+        </header>
+        <!-- 主页面内容容器 -->
+        <div id="refreshContainer" class="mui-content mui-scroll-wrapper">
+            <div class="mui-scroll">
+                <form>
+                    <div class="mui-input-row mui-search" id="input-search">
+                        <input type="search" id="search" class="mui-input-clear" placeholder="搜索"  autocomplete="off">
+                    </div>
+                </form>
+                <!-- 主界面具体展示内容 -->
+                <ul class="mui-table-view mui-table-view-chevron" id="main-content">
+                </ul>
+            </div>
+        </div>
+        <div class="mui-content mui-scroll-wrapper">
+            <div class="mui-scroll">
+                <!-- 主界面具体展示内容 -->
+                <form class="mui-input-group" data-parsley-validate="">
+                    <div class="mui-input-row">
+                        <label>年级/班级 <span style="color: red">*</span></label>
+                        <input type="hidden" name="grade" id="grade">
+                        <input type="hidden" name="class" id="class">
+                        <input type="text" id='gradePicker' class="mui-input-clear mui-col-sm-3" placeholder="请选择班级">
+                    </div>
+                    <div class="mui-input-row">
+                        <label>试卷 <span style="color: red">*</span></label>
+                        <input type="hidden" name="topic" id="topic">
+                        <input type="text" id='topicPicker' class="mui-input-clear mui-col-sm-3" placeholder="请选择试卷">
+                    </div>
+                    <div class="mui-button-row">
+                        <input type="hidden" value="{$gradeData}" id="gradeData">
+                        <input type="hidden" value="{$topicData}" id="topicData">
+                        <button type="submit" class="mui-btn mui-btn-primary" >确认</button>
+                        <button type="button" class="mui-btn mui-btn-danger" >取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="mui-off-canvas-backdrop"></div>
+    </div>
+</div>
+{/block}
+{block name="script"}
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.picker.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.poppicker.js"></script>
+<script>
+    var formData = {};
+    jQuery(document).ready(function () {
+        mui.init();
+    });
+
+    Parsley.on('form:submit', function(e) {
+        formData = $('form').serializeObject();
+        var error = '';
+        console.log('formdata', formData)
+        if (formData.grade === '' || formData.class === '' ) {
+            error = '请选择【年级/班级】选项';
+        }
+        if (formData.topic === '' ) {
+            error = '请选择【试卷】选项';
+        }
+        if (error !== '') {
+            mui.alert(error, '哎呀，出错了');
+            return false;
+        }
+        return ajaxPost(formData);
+    });
+    function ajaxPost(formData) {
+        var index = layer.load(2);
+        $.ajax({
+            type: 'post',
+            dataType: 'json',
+            data: formData,
+            url: "{:url('login/setGrade')}",
+            complete: function () {
+                layer.close(index);
+            },
+            success: function (res) {
+                if (res.code === 200) {
+                    window.location.href = '{:url("index/index")}';
+                } else {
+                    mui.alert('获取数据错误', '哎呀，出错了');
+                }
+            },
+            error: function (xhr) {
+                mui.alert('操作失败，请联系管理员', '哎呀，出错了');
+            }
+        });
+        return false;
+    }
+</script>
+<script>
+    var setData;
+    var topicData;
+    (function($){
+        $(document).ready(function(){
+            setData = $("#gradeData").val();
+            setData = eval('(' + setData + ')');
+            topicData = $("#topicData").val();
+            topicData = eval('(' + topicData + ')');
+        });
+    })(jQuery);
+    (function($, doc) {
+        $.init();
+        $.ready(function() {
+            //普通示例
+            var topicPicker = new $.PopPicker();
+            topicPicker.setData(topicData);
+            var topicPickerButton = doc.getElementById("topicPicker");
+            var topic = doc.getElementById("topic");
+            topicPickerButton.addEventListener('tap', function(event) {
+                topicPicker.show(function(items) {
+                    topicPickerButton.value = items[0].text;
+                    topic.value = items[0].value;
+                    //返回 false 可以阻止选择框的关闭
+                    //return false;
+                });
+            }, false);
+            //-----------------------------------------
+            //级联示例
+           var gradePicker = new $.PopPicker({
+               layer: 2
+           });
+           gradePicker.setData(setData);
+           var gradePickerButton = doc.getElementById('gradePicker');
+           var grade = doc.getElementById('grade');
+           var class_ = doc.getElementById('class');
+           gradePickerButton.addEventListener('tap', function(event) {
+               gradePicker.show(function(items) {
+                   console.log('item', items);
+                   gradePickerButton.value = items[0].text + items[1].text;
+                   grade.value = items[0].value
+                   class_.value = items[1].value
+                   //返回 false 可以阻止选择框的关闭
+                   //return false;
+               });
+           }, false);
+            //-----------------------------------------
+            //     //级联示例
+//            var cityPicker3 = new $.PopPicker({
+//                layer: 3
+//            });
+//            cityPicker3.setData(cityData3);
+//            var showCityPickerButton = doc.getElementById('showCityPicker3');
+//            var cityResult3 = doc.getElementById('cityResult3');
+//            showCityPickerButton.addEventListener('tap', function(event) {
+//                cityPicker3.show(function(items) {
+//                    cityResult3.innerText = "你选择的城市是:" + (items[0] || {}).text + " " + (items[1] || {}).text + " " + (items[2] || {}).text;
+//                    //返回 false 可以阻止选择框的关闭
+//                    //return false;
+//                });
+//            }, false);
+        });
+    })(mui, document);
+</script>
+{/block}

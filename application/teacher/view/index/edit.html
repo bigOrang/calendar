@@ -1,0 +1,174 @@
+{extend name="common/form"/}
+{block name="link"}
+<link href="__STATIC__/js/plugins/multiselect/css/multi-select.css"  rel="stylesheet" type="text/css" />
+{/block}
+{block name="style"}
+<style>
+    /*高仿Html5自带的验证提示*/
+    .parsley-errors-list li{
+        position: fixed;
+        border: 1px solid #f0f0f0;
+        border-radius: 5px;
+        padding: 5px;
+        background-color: white;
+        z-index: 99999;
+        font-size: 14px;
+        color: #282828;
+        box-shadow: 0 0 20px #282828;
+    }
+
+    .parsley-errors-list li:after {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: 10px;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 8px solid white;
+    }
+
+    .parsley-errors-list li:after {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: 10px;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 8px solid white;
+    }
+
+    .parsley-errors-list li:before {
+        content: "!";
+        display: inline-block;
+        background-color: rgb(250,168,50);
+        font-size: 16px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        color: white;
+        border-radius: 2px;
+        text-align: center;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+
+    .parsley-errors-list li {
+        display: inline-block;
+        vertical-align: top;
+        line-height: 18px;
+    }
+    .parsley-errors-list {
+        margin: 0px;
+    }
+
+    .mui-radio input[type=radio]:checked:before {content: '\e442';}
+</style>
+{/block}
+{block name="body"}
+<!--mui标题-->
+<header class="mui-bar mui-bar-nav">
+    <a class="mui-icon mui-action-menu mui-icon-back mui-pull-left" id="go-back"></a>
+    <h1 class="mui-title">『编辑』{$title}</h1>
+</header>
+<!--mui内容-->
+<div class="mui-content mui-scroll-wrapper">
+    <div class="mui-scroll">
+        <form data-parsley-validate="">
+            {foreach $question as $key=>$val}
+            <div class="mui-card">
+                <div class="mui-card-header" style="word-wrap:break-word;display: block;"> <span style="color: red">*</span>第{$key + 1}题 ：{$val.title}</div>
+                <div class="mui-card-content">
+                    {foreach $val.child as $list=>$info}
+                        <div class="mui-input-row mui-radio mui-left">
+                            <label>{$info.content}</label>
+                            {in name="$info.id" value="$topicUsers"}
+                            <input name="radio[{$info.t_id}]" type="radio" style="margin: 0px;" checked required value="{$info.id}">
+                            {else}
+                            <input name="radio[{$info.t_id}]" type="radio" style="margin: 0px;" required value="{$info.id}">
+                            {/in}
+                        </div>
+                    {/foreach}
+                </div>
+            </div>
+            {/foreach}
+            <div class="mui-card">
+                <div class="mui-button-row" style="padding-bottom: 5px;">
+                    <input type="hidden" name="q_id" value="{$q_id}">
+                    <button type="reset" class="mui-btn mui-btn-danger">重置</button>
+                    {if $is_end}
+                    <input type="hidden" name="is_end" value="1">
+                    <button type="submit" class="mui-btn mui-btn-primary">提交</button>
+                    {else/}
+                    <button type="submit" class="mui-btn mui-btn-primary">下一题</button>
+                    {/if}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{/block}
+
+{block name="script"}
+<script type="text/javascript" src="__STATIC__/js/plugins/multiselect/js/jquery.multi-select.js"></script>
+<script type="text/javascript" src="__STATIC__/js/plugins/jquery-quicksearch/jquery.quicksearch.js"></script>
+<script type="text/javascript" src="__STATIC__/js/plugins/validate/jquery.validate.min.js"></script>
+<script type="text/javascript" src="__STATIC__/js/plugins/validate/messages_zh.min.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/common.js"></script>
+<script>
+    var c_id = "{$c_id}";
+    jQuery(document).ready(function () {
+        mui.init();
+        mui('.mui-scroll-wrapper').scroll();
+    });
+    var click = document.getElementById("go-back");
+    click.addEventListener('tap',function(){
+        var jump = '{:url("index/index",array("c_id"=>"C_id"))}';
+        window.location.href = jump.replace("C_id", c_id);
+    });
+    Parsley.on('form:submit', function(e) {
+        var formData = $('form').serializeObject();
+        var error = '';
+        if (error !== '') {
+            mui.alert(error, '哎呀，出错了', function() {
+            });
+            return false;
+        }
+        return ajaxPost(formData);
+    });
+
+    function ajaxPost(formData) {
+        // var index = layer.load(2);
+        $.ajax({
+            type: 'post',
+            dataType: 'json',
+            data: formData,
+            url: "{:url('index/detailEdit')}",
+            complete: function () {
+                // layer.close(index);
+            },
+            success: function (res) {
+                if (res.code === 200) {
+                    console.log('res.data', res.data)
+                    mui.alert(res.msg,'编辑成功', function () {
+                        var url;
+                        if (res.data.url) {
+                            url = '{:url("index/index",array("c_id"=>"C_id"))}';
+                            window.location.href = url.replace("C_id", res.data.c_id);
+                            // return false;
+                        } else {
+                            url = '{:url("index/detail",array("q_id"=>"Q_id"))}';
+                            window.location.href = url.replace("Q_id", res.data.q_id);
+                        }
+                    });
+                } else {
+                    mui.alert('获取数据错误','错误');
+                }
+            },
+            error: function (xhr) {
+                mui.alert('操作失败，请联系管理员','错误');
+            }
+        });
+        return false;
+    }
+</script>
+{/block}

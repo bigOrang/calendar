@@ -1,0 +1,188 @@
+{extend name="common/form"/}
+{block name="link"}
+<link href="__STATIC__/js/plugins/multiselect/css/multi-select.css"  rel="stylesheet" type="text/css" />
+<link href="__STATIC__/assets/plugins/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css" rel="stylesheet">
+<link href="__STATIC__/assets/plugins/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+    #search_div{
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        background: #fff none repeat scroll 0 0;
+        border: 1px solid #ccc;
+        margin: 10px auto;
+        padding:10px;
+        font-family: "Microsoft Yahei", "微软雅黑", "Pinghei";
+        font-size: 14px;
+    }
+    #search_input {
+        width: 200px;
+    }
+</style>
+{/block}
+{block name="body"}
+
+<div class="row layui-layout-body">
+    <div class="ibox float-e-margins">
+        <div class="ibox-content">
+            <form class="form-horizontal m-t" data-parsley-validate id="commentForm">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">分类名称 <span style="color:red">*</span></label>
+                    <div class="col-sm-8">
+                        <input id="name" type="text" minlength="2" maxlength="100" class="form-control" name="title" required="" aria-required="true" autocomplete="off" value="{$info.title}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">选择日期</label>
+                    <div class="col-sm-8">
+                        <div class="pull-right form-control input-daterange-timepicker" id="daterange-btn">
+                            <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">是否推送</label>
+                    <div class="col-sm-8">
+                        <div class="col-sm-3 radio i-checks choiceType">
+                            <label class="choiceType"><input type="radio" value="1" name="is_hint" {if $info.is_hint == 1} checked {/if}><i></i> 推送</label>
+                        </div>
+                        <div class="col-sm-3 radio i-checks choiceType">
+                            <label class="choiceType"><input type="radio" value="0" name="is_hint" {if $info.is_hint == 0} checked {/if}> <i></i> 不推送</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="is_show">
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">推送方式</label>
+                        <div class="col-sm-8">
+                            <div class="col-sm-3 checkbox i-checks">
+                                <label><input type="checkbox" value="2" class="push" name="push_type" {if in_array(2, $info.push_type)} checked {/if}><i></i> 短信</label>
+                            </div>
+                            <div class="col-sm-3 checkbox i-checks">
+                                <label><input type="checkbox" value="3" class="push" name="push_type" {if in_array(3, $info.push_type)} checked {/if}><i></i> 微信</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">选择用户</label>
+                        <div class="col-sm-8">
+                            <select name="users[]" class="multi-select" multiple="multiple" data-plugin="multiselect" data-selectable-optgroup="true" id="multi_select3" >
+                                {foreach $teacher as $key=>$vo}
+                                {if in_array($vo.user_id, $info.users)}
+                                <option value="{$vo.user_id}_{$vo.user_name}" selected>{$vo.user_name}({$vo.user_id})</option>
+                                {else}
+                                <option value="{$vo.user_id}_{$vo.user_name}">{$vo.user_name}({$vo.user_id})</option>
+                                {/if}
+                                {/foreach}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-sm-6 col-sm-offset-3">
+                        <input type="hidden" value="{$c_id}" name="c_id">
+                        <input type="hidden" value="{$info.id}" name="id">
+                        <button type="submit" id="submit" class="btn btn-w-m btn-primary">提交</button>
+                        <button type="reset" onclick="location.reload()" class="btn btn-w-m btn-warning">重置</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{/block}
+
+{block name="script"}
+<script src="__STATIC__/js/plugins/multiselect/js/jquery.multi-select.js"></script>
+<script src="__STATIC__/js/plugins/jquery-quicksearch/jquery.quicksearch.js"></script>
+<script src="__STATIC__/js/plugins/validate/jquery.validate.min.js"></script>
+<script src="__STATIC__/js/plugins/validate/messages_zh.min.js"></script>
+<script src="__STATIC__/js/plugins/select2/select2.min.js"></script>
+<script src="__STATIC__/js/plugins/select2/select2_locale_zh-CN.js"></script>
+<script src="__STATIC__/assets/plugins/moment/moment.js"></script>
+<script src="__STATIC__/assets/plugins/bootstrap-datepicker/dist/js/bootstrap-datepicker.js"></script>
+<script src="__STATIC__/assets/plugins/bootstrap-datepicker/dist/locales/bootstrap-datepicker.zh-CN.min.js"></script>
+<script src="__STATIC__/assets/plugins/bootstrap-daterangepicker/daterangepicker.js"></script>
+<script>
+    $(".select2").select2();
+    jQuery(document).ready(function() {
+        var isHint = "{$info.is_hint}";
+        $('.i-checks').iCheck({
+            checkboxClass: 'icheckbox_square-green',
+            radioClass: 'iradio_square-green',
+        });
+        if (isHint == 0) {
+            $("#is_show").hide();
+        }
+    });
+    $(".choiceType").click(function () {
+        var type = $(this).find("input").val();
+        if (type === '1') {
+            $("#is_show").show();
+        } else {
+            $("#is_show").hide();
+        }
+    });
+    timeInit("#daterange-btn");
+    $('#multi_select3').multiSelect({
+        selectableHeader: "<input type='text' class='form-control search-input' autocomplete='off' placeholder='搜索用户...'>",
+        selectionHeader: "<input type='text' class='form-control search-input' autocomplete='off' placeholder='搜索用户...'>",
+        afterInit: function (ms) {
+            var that = this,
+                $selectableSearch = that.$selectableUl.prev(),
+                $selectionSearch = that.$selectionUl.prev(),
+                selectableSearchString = '#' + that.$container.attr('id') + ' .ms-elem-selectable:not(.ms-selected)',
+                selectionSearchString = '#' + that.$container.attr('id') + ' .ms-elem-selection.ms-selected';
+
+            that.qs1 = $selectableSearch.quicksearch(selectableSearchString)
+                .on('keydown', function (e) {
+                    if (e.which === 40) {
+                        that.$selectableUl.focus();
+                        return false;
+                    }
+                });
+
+            that.qs2 = $selectionSearch.quicksearch(selectionSearchString)
+                .on('keydown', function (e) {
+                    if (e.which == 40) {
+                        that.$selectionUl.focus();
+                        return false;
+                    }
+                });
+        },
+        afterSelect: function () {
+            this.qs1.cache();
+            this.qs2.cache();
+        },
+        afterDeselect: function () {
+            this.qs1.cache();
+            this.qs2.cache();
+        }
+    });
+
+    Parsley.on('form:submit', function(e) {
+        var formData = $('form').serializeObject();
+        formData['time'] = $('#daterange-btn span').text();
+        if (formData['is_hint'] == 0) {
+            formData['push_type'] = 0;
+        } else {
+            if (!formData.hasOwnProperty("users[]")) {
+                swal({
+                    title: "请选择",
+                    text: "请选择本事件需要推送的用户",
+                    type: "error"
+                });
+                return false;
+            }
+            var type = typeof formData['push_type'];
+            if (type === 'object') {
+                formData['push_type'] = 1;
+            }
+        }
+        return ajaxPostData(formData, "{:url('calendar/update')}");
+    });
+</script>
+{/block}

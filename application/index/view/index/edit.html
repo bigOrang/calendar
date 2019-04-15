@@ -1,0 +1,647 @@
+{extend name="common/form"/}
+{block name="link"}
+<link href="__STATIC__/css/plugins/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.picker.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.picker.min.css" rel="stylesheet">
+<link href="__STATIC__/plugins/mui/css/mui.poppicker.css" rel="stylesheet">
+{/block}
+{block name="style"}
+<style>
+    * {
+        touch-action: pan-y;
+    }
+    .main-advisory-content
+    {   width: 95%;
+        overflow: hidden;/*超出部分隐藏*/
+        white-space: nowrap;/*不换行*/
+        text-overflow:ellipsis;/*超出部分文字以...显示*/
+    }
+    .radio_inline{
+        display: inline-block;
+        width: 65%;
+    }
+    .radio_inline label{
+
+        width: 20%;
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+    .radio_inline input[type=radio]{
+        width: 15%;
+        right: auto;
+    }
+    #checkbox-all .mui-input-row label {
+        padding-left : 30px;
+    }
+    #checkbox-all input[type=checkbox]{
+        left: 0;
+    }
+    #checkbox-all .mui-input-row{
+        display: inline-block;
+    }
+    #radio-all:after {
+        background-color : #ffffff !important;
+    }
+    #checkbox-all .mui-input-row:after {
+        background-color : #ffffff !important;
+    }
+    #first-label, #push_user {
+        font-family: 'Helvetica Neue',Helvetica,sans-serif;
+        line-height: 1.1;
+        float: left;
+        width: 35%;
+        padding: 11px 15px;
+    }
+    .mui-badge-danger {
+        background-color: #dd524d !important;
+    }
+    /*//换个样式*/
+    .change .mui-radio input[type='radio']:checked:before{
+        content:'\e442';
+        color:red;
+    }
+    /*//换个样式*/
+    .change .mui-checkbox input[type='checkbox']:checked:before{
+        content:'\e442';
+        color:red;
+    }
+    #button-all {
+        display: flex;
+        height: 40px;
+    }
+    #button-all button {
+        width: auto;
+        min-width: 50px;
+        text-align: left;
+        height: 30px;
+        line-height: 30px;
+        padding: 0 5px;
+        margin-right: 10px;
+        /* font-size: 21px; */
+        /*position: absolute;*/
+        top: 10%;
+    }
+    #button-all button .make-position {
+        position: initial;
+        display: initial;
+    }
+    #button-all button span{
+        width: 20px;
+        padding: 3px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    #button-all a button span {
+        height: 20px;
+        width: 60%;
+        font-size: 10px;
+        line-height: 16px;
+    }
+</style>
+<style>
+
+    .wrapper {
+        width: 300px;
+        height: 400px;
+        overflow-x: scroll;
+        border: 1px solid #ccc;
+        margin: 0 auto;
+    }
+
+    .fold {
+        display: none;
+    }
+
+    .aiui .checkbox {
+        width: 15px;
+        height: 15px;
+        border: 1px solid #dadada;
+        border-radius: 2px;
+        -webkit-border-radius: 2px;
+        -moz-border-radius: 2px;
+        margin: 2px 5px 0 0;
+        cursor: pointer;
+    }
+    .mui-input-group:after {
+        background-color : #fff !important;
+    }
+
+    .aiui .c-selected {
+        border: 1px solid #27b0f2;
+        position: relative;
+    }
+
+    .aiui .c-selected:after {
+        content: '';
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: #27b0f2 url("__STATIC__/img/checkbox/ai_icon.png") no-repeat -36px -1px;
+    }
+
+    .aiui .c-selected:after {
+        background-position: -1px -1px;
+    }
+
+    .aiui .not-all-selected:after {
+        background-position: -36px -1px;
+    }
+
+    .aiui .checkbox > input {
+        margin: 0;
+        visibility: hidden;
+    }
+
+    .pull-left {
+        float: left;
+    }
+
+    .c-f:after {
+        content: ".";
+        display: block;
+        height: 0;
+        clear: both;
+        visibility: hidden
+    }
+
+    ul, li, i {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-style: normal;
+    }
+
+    .ai-treenav {
+        width: 100%;
+    }
+
+    .ai-treenav ul {
+        margin-left: 20px;
+    }
+
+    .ai-treenav i {
+        width: 14px;
+        height: 14px;
+        background: url("__STATIC__/img/checkbox/ai_icon.png") no-repeat -4px -33px;
+        margin: 2px 7px 0 0;
+        float: left
+    }
+
+    .ai-treenav i.unfold, .ai-treenav .item-name-last > i {
+        width: 14px;
+        height: 14px;
+        background: url("__STATIC__/img/checkbox/ai_icon.png") no-repeat -24px -33px;
+    }
+
+    .ai-treenav a {
+        display: block;
+        font-size: 14px;
+        height: 22px;
+        padding: 3px 0;
+        color: #666;
+        overflow: hidden;
+    }
+
+    .nav-trunk {
+        margin-left: 20px;
+    }
+
+    .ai-treenav .checkbox {
+        margin-top: 0;
+    }
+
+    .ai-treenav .filename, .ai-treenav .filename-open {
+        background: url("__STATIC__/img/checkbox/ai_icon.png") no-repeat 0 -72px;
+        padding-left: 25px;
+        width: 50%;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .ai-treenav .filename-open {
+        background-position: 0 -52px;
+    }
+
+    .ai-treenav li.unfold {
+        min-width: 250px;
+    }
+
+    .ai-treenav li.unfold > ul li .filename {
+        width: 60%;
+    }
+</style>
+{/block}
+{block name="body"}
+<div class="mui-off-canvas-wrap mui-draggable">
+    <aside class="mui-off-canvas-right" id="offCanvasSide">
+        <div class="mui-scroll-wrapper" style="background-color: #fff;">
+            <div class="mui-scroll">
+                <!-- 菜单具体展示内容 -->
+                <form class="users mui-input-group" data-parsley-validate="">
+                    <div class="mui-input-row">
+                        <input type="text" class="mui-input-clear" id="search-text" placeholder="请输入需要检索的用户..." autocomplete="off">
+                    </div>
+                    <div class="aiui">
+                        <div class="ai-treenav">
+                            <ul>
+                                <li>
+                                    <ul class="nav-trunk">
+                                        <li class="unfold">
+                                            <a class="item-name c-f">
+                                                <i class="unfold"></i>
+                                                <span class="pull-left">
+                                                    <div class="checkbox all-checkbox">
+                                                        <input type="checkbox" class="choice-user" id="choice-user-all">
+                                                    </div>
+                                                </span>
+                                                <span class="pull-left filename all filename-open">全选</span>
+                                            </a>
+                                            <ul class="nav-trunk fold" style="display: block;" id="user-list">
+                                                {foreach $teacher as $key=>$vo}
+                                                <li>
+                                                    <a class="item-name  item-name-last c-f">
+                                                        <i></i>
+                                                        <span class="pull-left">
+                                                            {if in_array($vo.user_id, $info.users)}
+                                                                <div class="checkbox user_info c-selected" uname="{$vo.user_name}" ucode="{$vo.user_id}">
+                                                                    <input type="checkbox" value="{$vo.user_id}_{$vo.user_name}" name="users" class="choice-user" checked>
+                                                                </div>
+                                                            {else}
+                                                                <div class="checkbox user_info" uname="{$vo.user_name}" ucode="{$vo.user_id}">
+                                                                    <input type="checkbox" value="{$vo.user_id}_{$vo.user_name}" name="users" class="choice-user">
+                                                                </div>
+                                                            {/if}
+                                                            </span>
+                                                        <span class="pull-left filename">{$vo.user_name}({$vo.user_id})</span>
+                                                    </a>
+                                                </li>
+                                                {/foreach}
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </aside>
+    <!-- 主页面容器 -->
+    <div class="mui-inner-wrap">
+        <!-- 主页面标题 -->
+        <header class="mui-bar mui-bar-nav">
+            <a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left" id="go-back"></a>
+            <h1 class="mui-title">『编辑事件』{$info.title}</h1>
+        </header>
+        <!-- 主页面内容容器 -->
+        <div id="refreshContainer" class="mui-content mui-scroll-wrapper">
+            <div class="mui-scroll">
+                <!-- 主界面具体展示内容 -->
+                <form class="mui-input-group" data-parsley-validate="">
+                    <div class="mui-input-row">
+                        <input type="hidden" name="start_time" id="start_time" value="{$info.start_time}">
+                        <label>开始时间 <span style="color:red">*</span></label>
+                        <input type="text" id='showTimeSPicker' data-options='{"type":"date"}' class="mui-input-clear" placeholder="选择开始日期 ..." value="{$info.start_time}">
+                    </div>
+                    <div class="mui-input-row">
+                        <input type="hidden" name="end_time" id="end_time" value="{$info.end_time}">
+                        <label>结束时间 <span style="color:red">*</span></label>
+                        <input type="text" id='showTimeEPicker' data-options='{"type":"date"}' class="mui-input-clear" placeholder="选择结束日期 ..." value="{$info.end_time}">
+                    </div>
+                    <div class="mui-input-row" style="height: auto">
+                        <label>咨询内容 <span style="color:red">*</span></label>
+                        <textarea name="title" id="title" cols="30" rows="3" maxlength="100" placeholder="请输入事件内容...">{$info.title}</textarea>
+                    </div>
+                    <div class="mui-input-row" id="radio-all">
+                        <label>是否推送 <span style="color:red">*</span></label>
+                        <span class="radio_inline mui-radio">
+                            <input name="is_hint" type="radio" id="radio_allow"  value="1" class="radioInline" {if $info.is_hint == 1} checked {/if}>
+                            <label for="radio_allow">是</label>
+                            <input name="is_hint" type="radio" id="radio_refuse" value="0" class="radioInline" {if $info.is_hint == 0} checked {/if}>
+                            <label for="radio_refuse">否</label>
+                        </span>
+                    </div>
+                    <div id="show">
+                        <div class="mui-input-group" id="checkbox-all">
+                            <label id="first-label">推送方式 <span style="color:red">*</span></label>
+                            <div class="mui-input-row mui-checkbox mui-left">
+                                <label>短信</label>
+                                <input name="push_type" class="listCheckBox" {if in_array(2, $info.push_type)} checked {/if} value="2" type="checkbox">
+                            </div>
+                            <div class="mui-input-row mui-checkbox mui-left">
+                                <label>微信</label>
+                                <input name="push_type" class="listCheckBox" {if in_array(3, $info.push_type)} checked {/if} value="3" type="checkbox">
+                            </div>
+                        </div>
+                        <div class="mui-input-row">
+                            <label id="push_user">推送用户 <span style="color:red">*</span></label>
+                            <span id="button-all">
+                            <!--<button type="button" class="mui-btn mui-btn-primary">-->
+                                <!--自己-->
+                                <!--<div class="make-position">-->
+                                    <!--<span class="mui-icon mui-icon-closeempty"></span>-->
+                                <!--</div>-->
+                            <!--</button>-->
+                            <a href="#offCanvasSide">
+                                <button type="button" class="mui-icon mui-icon-plusempty" style="text-align: center;font-weight: 500;">
+                                    {notempty name="$info.users"}
+                                        <span class="mui-badge">{php}echo count($info['users']){/php}</span>
+                                    {/notempty}
+                                </button>
+                            </a>
+                        </span>
+                        </div>
+                    </div>
+                    <div id='userResult' class="ui-alert"></div>
+                    <div class="mui-button-row">
+                        <input type="hidden" name="id" value="{$info.id}">
+                        <button type="reset" class="mui-btn mui-btn-danger" >重置</button>
+                        <button type="submit" class="mui-btn mui-btn-primary" >确认</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="mui-off-canvas-backdrop"></div>
+    </div>
+</div>
+{/block}
+{block name="script"}
+<!--<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.picker.js"></script>-->
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.picker.min.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/mui.poppicker.js"></script>
+<script type="text/javascript" src="__STATIC__/plugins/mui/js/common.js"></script>
+<script>
+    var isCommon = "{$info.is_hint}";
+    isCommon === '0' ? document.getElementById('show').style.display = 'none' : document.getElementById('show').style.display = 'show';
+        jQuery(document).ready(function () {
+        mui.init();
+        mui('.mui-scroll-wrapper').scroll();
+        //关闭拖动侧滑
+        document.getElementsByClassName('mui-inner-wrap')[0].addEventListener('drag', function(event) {
+            event.stopPropagation();
+        });
+        //显示/隐藏
+        var radioInline = document.getElementsByClassName('radioInline');
+            $.each(radioInline, function (key, val) {
+            val.addEventListener('tap',function(){
+                if (this.value === '0') {
+                    document.getElementById('show').style.display = 'none';
+                } else {
+                    document.getElementById('show').style.display = 'block';
+                }
+            });
+        })
+    });
+    Parsley.on('form:submit', function(e) {
+        var formData = $('form').serializeObject();
+        var error = '';
+        if (formData.start_time === '') {
+            error = '请选择【开始时间】选项';
+        }
+        if (formData.end_time === '') {
+            error = '请选择【结束时间】选项';
+        }
+        if (formData.title === '') {
+            error = '请输入【事件内容】具体内容 ';
+        }
+        if (isEmojiCharacter(formData.title) === true) {
+            error = '【事件内容】内容中包括特殊字符';
+        }
+        if (formData.title.length > 100) {
+            error = '【事件内容】内容长度过长[100字符]';
+        }
+        if (formData.push_type === '') {
+            error = '请选择【推送方式】选项';
+        }
+        if (formData['is_hint'] === '0') {
+            formData['push_type'] = 0;
+        } else {
+            if (!formData.hasOwnProperty("users")) {
+                error = '请选择本事件需要推送的用户';
+            }
+            var type = typeof formData['push_type'];
+            if (type === 'object') {
+                formData['push_type'] = 1;
+            }
+        }
+        if (error !== '') {
+            mui.alert(error, '哎呀，出错了', function() {
+            });
+            return false;
+        }
+        return muiAjaxPostData(formData, "{:url('index/update')}");
+    });
+
+</script>
+<script>
+    function isEmojiCharacter(substring){
+        if(substring){
+            var reg = new RegExp("[~#^$@%&!?%*]", 'g');
+            if (substring.match(reg)) {
+                return true;
+            }
+            for ( var i = 0; i < substring.length; i++) {
+                var hs = substring.charCodeAt(i);
+                if (0xd800 <= hs && hs <= 0xdbff) {
+                    if (substring.length > 1) {
+                        var ls = substring.charCodeAt(i + 1);
+                        var uc = ((hs - 0xd800) * 0x400) + (ls - 0xdc00) + 0x10000;
+                        if (0x1d000 <= uc && uc <= 0x1f77f) {
+                            return true;
+                        }
+                    }
+                } else if (substring.length > 1) {
+                    var ls = substring.charCodeAt(i + 1);
+                    if (ls == 0x20e3) {
+                        return true;
+                    }
+                } else {
+                    if (0x2100 <= hs && hs <= 0x27ff) {
+                        return true;
+                    } else if (0x2B05 <= hs && hs <= 0x2b07) {
+                        return true;
+                    } else if (0x2934 <= hs && hs <= 0x2935) {
+                        return true;
+                    } else if (0x3297 <= hs && hs <= 0x3299) {
+                        return true;
+                    } else if (hs == 0xa9 || hs == 0xae || hs == 0x303d || hs == 0x3030
+                        || hs == 0x2b55 || hs == 0x2b1c || hs == 0x2b1b
+                        || hs == 0x2b50) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+</script>
+<script>
+    (function($, doc, $$) {
+        //遮罩蒙板--人员选择
+        var item = $$(".item-name > i");
+        var check = $$(".checkbox");
+        $$.each(item, function (key, val) {
+            val.addEventListener('tap',function(){
+                $$(this).parent().parent().toggleClass("unfold")
+                $$(this).parent().parent().find("ul:first").slideToggle(200);
+                $$(this).toggleClass("unfold");
+                $$(this).parent().children(".filename").toggleClass("filename-open");
+            });
+        });
+        $$.each(check, function (key, val) {
+            var listBox;
+            val.addEventListener('tap',function(){
+                if ($$(this).parent().next().hasClass("all")) {
+                    //全选
+                    listBox = $('.choice-user');
+                    if (!$$(this).find("input").is(':checked')) {
+                        listBox.each(function() {
+                            var ele = this;
+                            ele.checked = true
+                        });
+                        $$('.checkbox').addClass("c-selected");
+                    } else {
+                        listBox.each(function() {
+                            var ele = this;
+                            ele.checked=false
+                        })
+                        $$('.checkbox').removeClass("c-selected");
+                    }
+                    // $$('.checkbox').toggleClass("c-selected");
+                } else {
+                    listBox = $$(this).find("input");
+                    if (!$$(this).find("input").is(':checked')) {
+                        listBox.each(function() {
+                            var ele = this;
+                            ele.checked = true
+                        })
+                    } else {
+                        listBox.each(function() {
+                            var ele = this;
+                            ele.checked=false
+                        })
+                    }
+                    $$(this).toggleClass("c-selected");
+                }
+                var checkLen = $$('.aiui input[type=checkbox]:checked').length;
+                var checkUser = $$('.user_info input[type=checkbox]:checked').length;
+                var checkAll = $$('.aiui input[type=checkbox]').length;
+                if (checkUser > 0) {
+                    $$("#button-all a button").append("<span class=\"mui-badge\">"+ checkUser +"</span>")
+                } else {
+                    $$("#button-all a button").empty()
+                }
+                if (checkLen === checkAll) {
+                    $$('.all-checkbox').removeClass("not-all-selected");
+                } else {
+                    if (checkLen === 0) {
+                        $$('.all-checkbox').removeClass("c-selected not-all-selected");
+                    } else {
+                        $$('.all-checkbox').addClass("c-selected not-all-selected");
+                    }
+                }
+            });
+        });
+    })(mui, document, jQuery);
+</script>
+<script>
+    (function($, doc) {
+        // $.init();
+        //时间选择
+        $.ready(function () {
+            var showSTime = doc.getElementById("showTimeSPicker");
+            var showETime = doc.getElementById("showTimeEPicker");
+            var timeSDate = doc.getElementById("start_time");
+            var timeEDate = doc.getElementById("end_time");
+            showSTime.addEventListener('tap', function () {
+                var _self = this;
+                var options = {};
+                if (timeEDate.value !== '') {
+                    options['type'] = 'date';
+                    // options['value'] = '2015-01-01';
+                    var arr = timeEDate.value.split('-');
+                    arr[1] = (arr[1]-1);
+                    options['endDate'] = new Date(arr[0], arr[1], arr[2]);
+                } else {
+                    options['type'] = 'date';
+                    // options['value'] = '2015-01-01';
+                }
+                var id = this.getAttribute('id');
+                _self.picker = new $.DtPicker(options);
+                _self.picker.setSelectedValue('{$info.start_time}');
+                _self.picker.show(function(rs) {
+                    /*
+                     * rs.value 拼合后的 value
+                     * rs.text 拼合后的 text
+                     * rs.y 年，可以通过 rs.y.vaue 和 rs.y.text 获取值和文本
+                     * rs.m 月，用法同年
+                     * rs.d 日，用法同年
+                     * rs.h 时，用法同年
+                     * rs.i 分（minutes 的第二个字母），用法同年
+                     */
+                    showSTime.value= rs.value;
+                    timeSDate.value = rs.value;
+                });
+            }, false);
+            showETime.addEventListener('tap', function () {
+                var _self = this;
+                var startTime, arr;
+                if (timeSDate.value !== '') {
+                    startTime = timeSDate.value;
+                    arr = startTime.split('-');
+                    arr[1] = (arr[1]-1);
+                } else {
+                    var year = new Date().getFullYear() ;
+                    var month = new Date().getMonth();
+                    var day = new Date().getDate();
+                    startTime = year + '-' + month + '-' + day;
+                    arr = startTime.split('-');
+                }
+                var id = this.getAttribute('id');
+                _self.picker = new $.DtPicker({
+                    'type': 'date',
+                    beginDate: new Date(arr[0], arr[1], arr[2])
+                });
+                _self.picker.setSelectedValue('{$info.end_time}');
+                _self.picker.show(function(rs) {
+                    showETime.value= rs.value;
+                    timeEDate.value = rs.value;
+                });
+            }, false);
+        });
+    })(mui, document);
+</script>
+<script>
+    //列表搜索keypress
+    (function ($, doc, $$) {
+        $$("#search-text").on("input propertychange",function(){
+            searchDomain();
+        });
+        mui('#search-text')[0].addEventListener('focus', function(){
+            mui(".mui-icon-clear")[0].addEventListener('tap',function(){
+                searchDomain()
+            });
+        });
+        function searchDomain() {
+            var searchText = $$("#search-text").val().replace(/(^\s*)|(\s*$)/g, "");
+            if (searchText !== "" && searchText != null) {
+                $$("#user-list .user_info").each(function () {
+                    var uname = $$(this).attr("uname");
+                    var ucode = $$(this).attr("ucode");
+                    if (uname.indexOf(searchText) === -1 && ucode.indexOf(searchText) === -1) {
+                        $$(this).parent().parent().parent().hide();
+                    }
+                });
+            } else {
+                $$("#user-list .user_info").each(function () {
+                    $$(this).parent().parent().parent().show();
+                })
+            }
+        }
+    })(mui, document, jQuery);
+</script>
+{/block}

@@ -42,7 +42,7 @@
                     <div class="col-sm-8">
                         <div class="pull-right form-control input-daterange-timepicker" id="daterange-btn">
                             <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>
-                            <span></span>
+                            <span>{$sTime} - {$eTime}</span>
                         </div>
                     </div>
                 </div>
@@ -166,8 +166,6 @@
         if (formData['is_hint'] == 0) {
             formData['push_type'] = 0;
         } else {
-            console.log('formData', formData);
-            console.log('hasOwnProperty', formData.hasOwnProperty("users[]"));
             if (!formData.hasOwnProperty("users[]")) {
                 swal({
                     title: "请选择",

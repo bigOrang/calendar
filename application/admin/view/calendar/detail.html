@@ -64,7 +64,6 @@
             </div>
         </div>
     </div>
-
 </div>
 {/block}
 {block name="script"}
@@ -82,7 +81,7 @@
     var events = $("#detail").val();
     events = eval('(' + events + ')');
     var editUrl = '{:url("calendar/update",array("c_id"=>"C_id","id"=>"ID"))}';
-    var addUrl = '{:url("calendar/add",array("c_id"=>"C_id","id"=>"ID"))}';
+    var addUrl = '{:url("calendar/add",array("c_id"=>"C_id","id"=>"ID","start"=>"START","end"=>"END"))}';
     var delUrl = '{:url("calendar/delete",array("c_id"=>"C_id","id"=>"ID"))}';
     editUrl = editUrl.replace("C_id",cId);
     addUrl = addUrl.replace("C_id",cId);
@@ -174,13 +173,15 @@
         /* on select */
         select : function (start, end, allDay) {
             var $this = this;
-            var check = start._d.getTime();
+            var startD = start._d.getTime();
+            var endD = end._d.getTime();
             var today = (new Date()).getTime();
-            if(check < today)
+            if(startD < today)
             {
                 // swal("提示", "请选择今天之后的日子", "info");
             }
-            dialog('新增事件', addUrl, 800, 550);
+            var url = addUrl.replace("START",startD).replace("END",endD);
+            dialog('新增事件', url, 800, 550);
             // $calendarObj('unselect');
         },
         events: events

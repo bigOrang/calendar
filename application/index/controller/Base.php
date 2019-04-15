@@ -1,5 +1,5 @@
 <?php
-namespace app\teacher\controller;
+namespace app\index\controller;
 
 use think\Controller;
 use think\Db;
@@ -14,25 +14,20 @@ class Base extends Controller
         $school_id = input('get.school_id');
         $client_id = input('get.client_id');
         if (!empty($user_id) && !empty($school_id) && !empty($client_id)) {
-            if (session('teacher_user_id') !== $user_id || session('teacher_school_id') !== $school_id) {
-                Session::delete("teacher_is_login");
-                Session::delete("teacher_grade");
-                Session::delete("teacher_class");
-                Session::delete("teacher_s_id");
-            }
-            session('teacher_user_id', $user_id);
-            session('teacher_school_id', $school_id);
-            session('teacher_client_id', $client_id);
-            session('teacher_auth_status',1);
+            session('index_user_id', $user_id);
+            session('index_school_id', $school_id);
+            session('index_client_id', $client_id);
+            session('index_auth_status',1);
+            session("teacher", $this->getTeacher());
         } else {
-            if (empty(session('teacher_auth_status'))) {
+            if (empty(session('index_auth_status'))) {
                 exit($this->fetch('./403',[
                     'msg' => '身份过期，请重新登陆!'
                 ]));
             }
         }
         if (empty($school_id)) {
-            $school_id = session('teacher_school_id');
+            $school_id = session('index_school_id');
         }
         $db = Db::table('t_sys_mod_biz_db')->where('school_id', $school_id)->find();
         if ($db) {
@@ -48,14 +43,12 @@ class Base extends Controller
                 'charset'         => 'utf8',
                 'prefix'          => '',
             ];
-            session('teacher_db-config_'.$school_id, $config);
+            session('index_db-config_'.$school_id, $config);
         } else {
             exit($this->fetch('./404',[
                 'msg' => '初始化数据失败!'
             ]));
         }
-        if (!Session::has("teacher_is_login"))
-            $this->redirect("./teacher/login/index");
     }
     /**
      * @param array $data
@@ -79,15 +72,15 @@ class Base extends Controller
         ], JSON_UNESCAPED_UNICODE);
     }
 
-    public function getUserInfo()
+    public function getTeacher()
     {
         //获取token
         $tokenService = config('api.getToken');
-        $userInfoService = config('api.getUserInfo');
+        $teacherService = config('api.getTeacher');
         $basicHeader[] = "Authorization: Basic ".base64_encode("{$tokenService['basic']['username']}:{$tokenService['basic']['password']}"); //添加头，在name和pass处填写对应账号密码
-        $tokenHeader = ['school_id:' . session("teacher_school_id")];
+        $tokenHeader = ['school_id:' . session("index_school_id")];
         $tokenHeader = array_merge($tokenHeader, $basicHeader);
-        $tokenService['body']['username'] = session("teacher_user_id");
+        $tokenService['body']['username'] = session("index_user_id");
         $token = $this->curlRequest($tokenService['url'], $tokenService['method'], $tokenHeader, $tokenService['body'], []);
         if (!isset($token['access_token'])) {
             exit($this->fetch('./500',[
@@ -95,19 +88,18 @@ class Base extends Controller
             ]));
         } else {
             $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
-            $userInfoHeader = [
-                'Content-Type:' . $userInfoService['header']['Content-Type'],
-                'school_id:' . session("teacher_school_id"),
-                'mdc_value:' . $userInfoService['header']['mdc_value'],
-                'client_id:' . $userInfoService['header']['client_id'],
+            $teacherHeader = [
+                'school_id:' . session("index_school_id"),
+                'master_key:' . $teacherService['header']['master_key'],
+                'mdc_value:' . $teacherService['header']['mdc_value'],
             ];
-            $userInfoHeader = array_merge($userInfoHeader, $bearerHeader);
-            $res = $this->curlRequest($userInfoService['url'], $userInfoService['method'], $userInfoHeader, $userInfoService['body'], []);
-            if (isset($res['gender'])) {
-                return $res;
+            $teacherHeader = array_merge($teacherHeader, $bearerHeader);
+            $res = $this->curlRequest($teacherService['url'], $teacherService['method'], $teacherHeader, $teacherService['body'], []);
+            if ($res['error_code'] == 1000) {
+                return $res['extra'];
             } else {
                 exit($this->fetch('./500',[
-                    'msg' => '获取用户详情失败'
+                    'msg' => '获取教师记录失败'
                 ]));
             }
         }
@@ -243,10 +235,42 @@ class Base extends Controller
             }
             $q = rtrim($q, ", ")." WHERE ".$referenceColumn." IN (".  rtrim($whereIn, ', ').")";
             // Update
-            return Db::connect(session('teacher_db-config_' . session("teacher_school_id")))->execute(DB::raw($q));
+            return Db::connect(session('index_db-config_' . session("index_school_id")))->execute(DB::raw($q));
         } else {
             return false;
         }
     }
 
+
+    /**
+     * 获取指定日期段内每一天的日期
+     * @param $startDate
+     * @param $endDate
+     * @param bool $timestamp
+     * @return array
+     */
+    function getDateFromRange($startDate, $endDate, $timestamp = true){
+
+        $sTimestamp = strtotime($startDate);
+        $eTimestamp = strtotime($endDate);
+
+        // 计算日期段内有多少天
+        $days = ($eTimestamp-$sTimestamp)/86400+1;
+        // 保存每天日期
+        $date = array();
+        for($i=0; $i<$days; $i++){
+            if ($timestamp) {
+                $date[] = intval($sTimestamp+(86400*$i)."000");
+            } else {
+                $date[] = date('Y-m-d', $sTimestamp+(86400*$i));
+            }
+        }
+//        if ($days == 1) {
+//            $date[] = date('Y-m-d', $sTimestamp);
+//        } else {
+//            $date[0] = date('Y-m-d', $sTimestamp);
+//            $date[] = date('Y-m-d', $eTimestamp);
+//        }
+        return $date;
+    }
 }

@@ -1,0 +1,488 @@
+{extend name="common/base"/}
+{block name="style"}
+<style>
+body {
+    touch-action: pan-y;
+}
+html {
+    font-size: 14px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.main-advisory-content
+{   width: 95%;
+    overflow: hidden;/*超出部分隐藏*/
+    white-space: nowrap;/*不换行*/
+    text-overflow:ellipsis;/*超出部分文字以...显示*/
+}
+    #add_advisory {
+        border: 1px black;
+    }
+#example .box {
+    margin: 0.5em auto;
+}
+.box {
+    padding: 0.5em !important;
+}
+.console .line-normal-wrapper {
+    height: auto;
+}
+.line-wrapper {
+    padding: 0px 0px 0px 10px !important;
+    min-height: 45px !important;
+}
+.console .line-wrapper div {
+    padding : 0px;
+    min-height: 45px !important;
+    border-bottom : 1px solid #DDD;
+}
+.console{
+    min-height: 350px;
+}
+.console .error {
+    height: 40px;
+    line-height: 40px;
+}
+.layui-header h1{
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 60px;
+    position: absolute;
+    display: block;
+    width: 100%;
+    /*margin: 0 -10px;*/
+    padding: 0;
+    text-align: center;
+    white-space: nowrap;
+    color: #fff;
+}
+.layui-header a {
+    font-size: 24px;
+    position: relative;
+    z-index: 20;
+    float: right;
+    line-height: 60px;
+    margin-right: 10px;
+    margin-left: -10px;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+</style>
+<style type="text/css">
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    .line-wrapper {
+        width: 100%;
+        /*height: 144px;*/
+        overflow: hidden;
+        /*font-size: 28px;*/
+        border-bottom: 1px solid #aaa;
+    }
+
+    .line-scroll-wrapper {
+        white-space: nowrap;
+        /*height: auto !important;*/
+        clear: both;
+    }
+
+    .line-btn-delete {
+        float: left;
+        width: 132px;
+        /*height: 144px;*/
+    }
+
+    .line-btn-delete .delete {
+        width: 50%;
+        height: 100%;
+        background: #FF5722;
+        border: none;
+        color: #fff;
+    }
+
+    .line-btn-delete .edit {
+        width: 50%;
+        height: 100%;
+        background: #1E9FFF;
+        border: none;
+        color: #fff;
+    }
+
+    .line-normal-wrapper {
+        display: inline-block;
+        line-height: 45px !important;
+        float: left;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .line-normal-icon-wrapper {
+        float: right;
+        width: 120px;
+        height: 120px;
+        margin-right: 12px;
+    }
+
+    .line-normal-icon-wrapper img {
+        width: 120px;
+        height: 120px;
+    }
+
+    .line-normal-avatar-wrapper {
+        width: 100px;
+        height: 124px;
+        float: left;
+        margin-left: 12px;
+    }
+
+    .line-normal-avatar-wrapper img {
+        width: 92px;
+        height: 92px;
+        border-radius: 60px;
+    }
+
+    .line-normal-left-wrapper {
+        float: left;
+        overflow: hidden;
+    }
+
+    .line-normal-info-wrapper {
+        float: left;
+        margin-left: 10px;
+    }
+
+    .line-normal-user-name {
+        height: 28px;
+        line-height: 28px;
+        color: #4e4e4e;
+        margin-top: 7px;
+    }
+
+    .line-normal-msg {
+        /*height: 28px;*/
+        line-height: 45px !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        /*color: #4e4e4e;*/
+        /*margin-top: 11px;*/
+    }
+
+    .line-normal-time {
+        height: 28px;
+        line-height: 28px;
+        color: #999;
+        margin-top: 11px;
+    }
+</style>
+<style>
+    #calendar,
+    #calendar .k-calendar-view,
+    #calendar .k-content {
+        width: 100%;
+    }
+    /* Template Days */
+    .exhibition,
+    .party,
+    .cocktail {
+        font-weight: bold;
+    }
+    .exhibition {
+        color: #ff9e00;
+    }
+    .party {
+        color: #ff4081;
+    }
+    .cocktail {
+        color: #00a1e8;
+    }
+    .italic{
+        font-style: italic;
+    }
+
+</style>
+{/block}
+{block name="body"}
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header header-demo" spring="">
+        <h1>我的校历</h1>
+        <a class="layui-icon layui-icon-add-1" onclick="add()"></a>
+    </div>
+</div>
+<input type="hidden" id="detail" value="{$date}">
+<div id="example" style="margin-top: 10px;">
+    <div id="calendar"></div>
+    <div class="box">
+        <h4 style="text-align: center">事件操作</h4>
+        <div class="console"></div>
+    </div>
+</div>
+{/block}
+{block name="script"}
+<script src="__STATIC__/assets/plugins/kendo-ui/calendar/kendo.all.min.js"></script>
+<script src="__STATIC__/assets/plugins/kendo-ui/calendar/console.js"></script>
+<script src="__STATIC__/assets/plugins/kendo-ui/calendar/cultures/kendo.culture.zh-CN.js"></script>
+<script src="__STATIC__/plugins/mui/js/common.js"></script>
+<script>
+    var slide = false;
+    function add() {
+        window.location = '{:url("index/add")}'
+    }
+    function onChange() {
+        var url = '{:url("index/getEvents",array("time"=>"TIME"))}';
+        var selectTime = calendar.current();
+        var finallyTime = [];
+        finallyTime.push(selectTime.getTime());
+        getEvents(url.replace("TIME",finallyTime));
+    }
+    function onNavigate() {
+        if (!slide) {
+            var url = '';
+            if (calendar === undefined) {
+                url = '{:url("index/getEvents")}';
+            } else {
+                url = '{:url("index/getEvents",array("time"=>"TI"))}';
+                var selectTime = calendar.current().getTime();
+                url = url.replace("TI",selectTime);
+            }
+            getEvents(url);
+        }
+    }
+    function getEvents(url) {
+        $(".console").empty();
+        $.ajax({
+            type: 'get',
+            dataType: 'json',
+            url: url,
+            success: function (res) {
+                if (res.code === 200) {
+                    var i = 0;
+                    $.each(res.data , function (key, val) {
+                        i++;
+                        kendoConsole.log(kendo.toString(calendar.current(), 'yyyy-MM-dd') + " 事件 "+ i  +" :: " + val.title, false, undefined, val.id);
+                    })
+                }
+                kendoConsole.error("操作日志");
+                getSlide()
+            },
+            error: function (xhr) {
+                mui.alert('操作失败，请联系管理员', '哎呀，出错了', function() {});
+            }
+        });
+        (function ($, doc, $$) {
+            var deleteButtons = doc.getElementsByClassName('delete');
+            var updateButtons = doc.getElementsByClassName('edit');
+            $$.each(deleteButtons, function (key, val) {
+                val.addEventListener('tap',function(){});
+            });
+            $$.each(updateButtons, function (key, val) {
+                val.addEventListener('tap',function(){});
+            });
+        })(mui, document, jQuery)
+    }
+    var today = new Date();
+    var events = $("#detail").val();
+    // language=JQuery-CSS
+    var calendarElement = $("#calendar");
+    events = eval('(' + events + ')');
+    calendarElement.kendoCalendar({
+        value: today,
+        dates: events,
+        // selectable: false,
+        weekNumber: true,
+        messages: {
+            weekColumnHeader: "周次"
+        },
+        month: {
+            // template for dates in month view
+            content: '# if ($.inArray(+data.date, data.dates) != -1) { #' +
+            '<div class="' +
+            '# if (data.value < 10) { #' +
+            "exhibition" +
+            '# } else if ( data.value < 20 ) { #' +
+            "party" +
+            '# } else { #' +
+            "cocktail" +
+            '# } #' +
+            '">#= data.value #</div>' +
+            '# } else { #' +
+            '#= data.value #' +
+            '# } #',
+            weekNumber: '<span class="italic">#= data.weekNumber #</span>'
+        },
+        footer: "今天 - #: kendo.toString(data, 'yyyy/MM/dd') #",
+        change: onChange,
+        culture: "zh-CN",
+        navigate: onNavigate
+    });
+    var calendar = calendarElement.data("kendoCalendar");
+
+    //拖动效果
+    var startx, starty;
+    //获得角度
+    function getAngle(angx, angy) {
+        return Math.atan2(angy, angx) * 180 / Math.PI;
+    }
+
+    //根据起点终点返回方向 1向上 2向下 3向左 4向右 0未滑动
+    function getDirection(startx, starty, endx, endy) {
+        var angx = endx - startx;
+        var angy = endy - starty;
+        var result = 0;
+
+        //如果滑动距离太短
+        if (Math.abs(angx) < 2 && Math.abs(angy) < 2) {
+            return result;
+        }
+
+        var angle = getAngle(angx, angy);
+        if (angle >= -135 && angle <= -45) {
+            result = 1;
+        } else if (angle > 45 && angle < 135) {
+            result = 2;
+        } else if ((angle >= 135 && angle <= 180) || (angle >= -180 && angle < -135)) {
+            result = 3;
+        } else if (angle >= -45 && angle <= 45) {
+            result = 4;
+        }
+
+        return result;
+    }
+    //手指接触屏幕
+    document.getElementById("calendar").addEventListener("touchstart", function(e){
+        startx = e.touches[0].pageX;
+        starty = e.touches[0].pageY;
+    }, false);
+    //手指离开屏幕
+    document.getElementById("calendar").addEventListener("touchend", function(e) {
+        var endx, endy;
+        endx = e.changedTouches[0].pageX;
+        endy = e.changedTouches[0].pageY;
+        var direction = getDirection(startx, starty, endx, endy);
+        switch (direction) {
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+                break;
+            case 3:
+                slide = true;
+                calendar.navigateToFuture();
+                break;
+            case 4:
+                slide = true;
+                calendar.navigateToPast();
+                break;
+            default:
+        }
+    }, false);
+</script>
+<script>
+    function getSlide() {
+        // 设定每一行的宽度=屏幕宽度+按钮宽度
+        $(".line-scroll-wrapper").width($(".line-wrapper").width() + $(".line-btn-delete").width());
+// 设定常规信息区域宽度=屏幕宽度
+        $(".line-normal-wrapper").width($(".line-wrapper").width());
+// 设定文字部分宽度（为了实现文字过长时在末尾显示...）
+        $(".line-normal-msg").width($(".line-normal-wrapper").width() - 30);
+
+// 获取所有行，对每一行设置监听
+        var lines = $(".line-normal-wrapper");
+        var len = lines.length;
+        var lastX, lastXForMobile;
+
+// 用于记录被按下的对象
+        var pressedObj; // 当前左滑的对象
+        var lastLeftObj; // 上一个左滑的对象
+
+// 用于记录按下的点
+        var start;
+        var i = 0;
+// 网页在移动端运行时的监听
+        for (i; i < len; ++i) {
+            lines[i].addEventListener('touchstart', function (e) {
+                lastXForMobile = e.changedTouches[0].pageX;
+                pressedObj = this; // 记录被按下的对象
+
+// 记录开始按下时的点
+                var touches = event.touches[0];
+                start = {
+                    x: touches.pageX, // 横坐标
+                    y: touches.pageY // 纵坐标
+                };
+            });
+
+            lines[i].addEventListener('touchmove', function (e) {
+// 计算划动过程中x和y的变化量
+                var touches = event.touches[0];
+                delta = {
+                    x: touches.pageX - start.x,
+                    y: touches.pageY - start.y
+                };
+
+// 横向位移大于纵向位移，阻止纵向滚动
+                if (Math.abs(delta.x) > Math.abs(delta.y)) {
+                    event.preventDefault();
+                }
+            });
+
+            lines[i].addEventListener('touchend', function (e) {
+                if (lastLeftObj && pressedObj != lastLeftObj) { // 点击除当前左滑对象之外的任意其他位置
+                    $(lastLeftObj).animate({marginLeft: "0"}, 300); // 右滑
+                    lastLeftObj = null; // 清空上一个左滑的对象
+                }
+                var diffX = e.changedTouches[0].pageX - lastXForMobile;
+                if (diffX < -50) {
+                    $(pressedObj).animate({marginLeft: "-132px"}, 300); // 左滑
+                    lastLeftObj && lastLeftObj != pressedObj &&
+                    $(lastLeftObj).animate({marginLeft: "0"}, 300); // 已经左滑状态的按钮右滑
+                    lastLeftObj = pressedObj; // 记录上一个左滑的对象
+                } else if (diffX > 50) {
+                    if (pressedObj == lastLeftObj) {
+                        $(pressedObj).animate({marginLeft: "0"}, 300); // 右滑
+                        lastLeftObj = null; // 清空上一个左滑的对象
+                    }
+                }
+            });
+        }
+
+// 网页在PC浏览器中运行时的监听
+//         for (var i = 0; i < len; ++i) {
+//             $(lines[i]).bind('mousedown', function (e) {
+//                 lastX = e.clientX;
+//                 pressedObj = this; // 记录被按下的对象
+//             });
+//
+//             $(lines[i]).bind('mouseup', function (e) {
+//                 if (lastLeftObj && pressedObj != lastLeftObj) { // 点击除当前左滑对象之外的任意其他位置
+//                     $(lastLeftObj).animate({marginLeft: "0"}, 500); // 右滑
+//                     lastLeftObj = null; // 清空上一个左滑的对象
+//                 }
+//                 var diffX = e.clientX - lastX;
+//                 if (diffX < -150) {
+//                     $(pressedObj).animate({marginLeft: "-132px"}, 500); // 左滑
+//                     lastLeftObj && lastLeftObj != pressedObj &&
+//                     $(lastLeftObj).animate({marginLeft: "0"}, 500); // 已经左滑状态的按钮右滑
+//                     lastLeftObj = pressedObj; // 记录上一个左滑的对象
+//                 } else if (diffX > 150) {
+//                     if (pressedObj == lastLeftObj) {
+//                         $(pressedObj).animate({marginLeft: "0"}, 500); // 右滑
+//                         lastLeftObj = null; // 清空上一个左滑的对象
+//                     }
+//                 }
+//             });
+//         }
+    }
+</script>
+<script>
+    function edit(id) {
+        var url = '{:url("index/update", array("id"=>"ID"))}';
+        window.location = url.replace("ID",id);
+    }
+
+    function deleteEvents(id) {
+        return muiAjaxToDelete('{:url("index/delete")}', id)
+    }
+</script>
+{/block}

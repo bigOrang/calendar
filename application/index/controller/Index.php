@@ -1,72 +1,80 @@
 <?php
-namespace app\admin\controller;
+namespace app\index\controller;
 
-use app\admin\model\CalendarDetailModel;
-use app\admin\model\CalendarDetailUserModel;
-use app\admin\model\CalendarModel;
-use app\admin\validate\CalendarDetail;
+use app\admin\model\CategoryModel;
+use app\admin\model\SpecialModel;
+use app\admin\model\TopicDetailModel;
+use app\admin\model\TopicModel;
+use app\index\model\CalendarDetailModel;
+use app\index\model\CalendarDetailUserModel;
+use app\index\model\CalendarModel;
+use app\teacher\model\StudentModel;
+use app\teacher\model\TopicUserModel;
+use app\common\Steps;
 use think\Db;
 use think\Exception;
 use think\facade\Log;
+use think\facade\Session;
 use think\Request;
 
-class Calendar extends Base
+class Index extends Base
 {
     public function index(Request $request)
     {
+        $dates = [];
         $calendarModel = new CalendarModel();
-        if ($request->isPost()) {
-            try{
-                $limit = $request->param('limit', 10);
-                $searchData = $request->param();
-                $data = $calendarModel->alias("a")->where(function ($query) use ($searchData) {
-                    //模糊搜索
-                    if (isset($searchData['search']) && !empty($searchData['search'])) {
-                        $query->where('a.title', 'like', '%' . $searchData['search'] . '%');
-                    }
-                    })->paginate($limit);
-                $data = json_decode(json_encode($data),true);
-            } catch (Exception $exception) {
-                Log::error('获取数据错误：'. $exception->getMessage());
-                $data = ['total' => 0, 'rows' => []];
-            }
-            return [
-                'total' => $data['total'],
-                'rows' => $data['data']
-            ];
-        }
-        return $this->fetch('./calendar/index');
-    }
-
-    public function detail(Request $request)
-    {
-        if ($request->has("id") && !empty($request->param("id"))) {
-            $cId = $request->param("id");
-            $title = CalendarModel::where("id", $cId)->value("title");
-            $data = CalendarDetailModel::where("c_id", $cId)->field("id,title,start_time as start,end_time as end,'bg-purple' as className")->select()->toArray();
-            foreach ($data as $key=>$value) {
-                if (strtotime($value['start']) !== strtotime($value['end'])) {
-                    $data[$key]['end'] = date("Y-m-d", strtotime($value['end'] ."+1 day"));
-                }
-            }
-            $this->assign("data", json_encode($data, 320));
-            $this->assign("name", $title);
-            $this->assign("c_id", $cId);
-            return $this->fetch('./calendar/detail');
+        $calendarDetailModel = new CalendarDetailModel();
+        if (Session::has("index_c_id")) {
+            $getCId = session("index_c_id");
         } else {
-            $this->alertInfo("缺少必要参数");
+            $getCId = $calendarModel
+                ->where("start_time","<", date("Y-m-d", time()))
+                ->where("end_time",">", date("Y-m-d", time()))->value("id");
+            session("index_c_id", $getCId);
         }
-
+        $events = $calendarDetailModel->where("c_id", $getCId)->field("start_time, end_time")->select()->toArray();
+        foreach ($events as $key=>$value) {
+            $dates = array_merge($dates, $this->getDateFromRange($value['start_time'], $value['end_time']));
+        }
+        $dates = array_values(array_unique($dates));
+        $this->assign("date", json_encode($dates));
+        return $this->fetch('./index/index');
     }
 
-    public function add(Request $request) {
+    public function getEvents(Request $request)
+    {
+        if ($request->has("time")) {
+            $time = substr($request->param("time"),0,10);
+        } else {
+            $time = time();
+        }
+        $calendarModel = new CalendarModel();
+        $calendarDetailModel = new CalendarDetailModel();
+//        $getCId = $calendarModel
+//            ->where("start_time","<", date("Y-m-d", time()))
+//            ->where("end_time",">", date("Y-m-d", time()))->value("id");
+        $getCId = session("index_c_id");
+        $events = $calendarDetailModel->where("c_id", $getCId)
+            ->where("start_time","<=", date("Y-m-d", $time))
+            ->where("end_time",">=", date("Y-m-d", $time))
+            ->order("id","desc")
+            ->select();
+        return $this->responseToJson($events, 'success', 200);
+    }
+
+    public function add(Request $request)
+    {
         if ($request->isPost()) {
             $requestData = $this->validation($request->post(), 'CalendarDetail');
             Db::startTrans();
             try {
+                $calendarModel = new CalendarModel();
+//                $getCId = $calendarModel
+//                    ->where("start_time","<", date("Y-m-d", time()))
+//                    ->where("end_time",">", date("Y-m-d", time()))->value("id");
                 $calendarDetailModel = new CalendarDetailModel();
                 $id = $calendarDetailModel->insertGetId([
-                    'c_id'       => $requestData['c_id'],
+                    'c_id'       => session("index_c_id"),
                     'title'      => $requestData['title'],
                     'start_time' => $requestData['start_time'],
                     'end_time'   => $requestData['end_time'],
@@ -87,30 +95,14 @@ class Calendar extends Base
                 }
                 // 提交事务
                 Db::commit();
-                return $this->responseToJson([],'添加成功');
+                return $this->responseToJson(['target'=>url("index/index")],'添加成功');
             } catch (\Exception $e) { // 回滚事务
                 Db::rollback();
                 return $this->responseToJson([],'添加失败'.$e->getMessage() , 201);
             }
         }
-        if ($request->has("c_id") && !empty($request->param("c_id"))) {
-            $cId = $request->param("c_id");
-            if ($request->has("start") && $request->has("end")) {
-                $start = $request->param("start");
-                $end = $request->param("end");
-            } else {
-                $start = $end = time().'000';
-            }
-            $sTime = date("Y-m-d", substr($start,0,10));
-            $eTime = date("Y-m-d", strtotime(date("Y-m-d", substr($end,0,10)). "-1 day"));
-            $this->assign("teacher", session("teachers"));
-            $this->assign("sTime", $sTime);
-            $this->assign("eTime", $eTime);
-            $this->assign("c_id", $cId);
-            return $this->fetch('./calendar/add');
-        } else {
-            $this->alertInfo("缺少必要参数");
-        }
+        $this->assign("teacher", session("teacher"));
+        return $this->fetch('./index/add');
     }
 
     public function update(Request $request)
@@ -121,14 +113,12 @@ class Calendar extends Base
             $requestData = $this->validation($request->post(), 'CalendarDetail');
             try {
                 $calendarDetailModel->where("id", $requestData['id'])->update([
-                    'c_id'       => $requestData['c_id'],
                     'title'      => $requestData['title'],
                     'start_time' => $requestData['start_time'],
                     'end_time'   => $requestData['end_time'],
                     'push_type'  => $requestData['push_type']
                 ]);
-                $calendarUserModel = new CalendarDetailUserModel();
-                $calendarUserModel->where("d_id", $requestData['id'])->delete();
+                $calendarUsersModel->where("d_id", $requestData['id'])->delete();
                 if ($requestData['push_type'] != 0) {
                     $insertArr = [];
                     foreach ($requestData['users'] as $k=>$v) {
@@ -139,16 +129,15 @@ class Calendar extends Base
                             'user_name' => $userArr[1],
                         ];
                     }
-                    $calendarUserModel->insertAll($insertArr);
+                    $calendarUsersModel->insertAll($insertArr);
                 }
-                return $this->responseToJson([],'编辑成功');
+                return $this->responseToJson(['target'=>url("index/index")],'编辑成功');
             } catch (\Exception $e) {
                 return $this->responseToJson([],'编辑失败'.$e->getMessage() , 201);
             }
         }
-        if ($request->has("id") && !empty($request->param("id")) && $request->has("c_id") && !empty($request->param("c_id"))) {
+        if ($request->has("id") && !empty($request->param("id"))) {
             $id = $request->param("id");
-            $cId = $request->param("c_id");
             $data = $calendarDetailModel->where("id", $id)->find();
             if ($data['push_type'] !== 0) {
                 $data['is_hint'] = 1;
@@ -160,13 +149,13 @@ class Calendar extends Base
                 $data['users'] = [];
             }
             $this->assign("info", $data);
-            $this->assign("c_id", $cId);
-            $this->assign("teacher", session("teachers"));
-            return $this->fetch('./calendar/edit');
+            $this->assign("teacher", session("teacher"));
+            return $this->fetch('./index/edit');
         } else {
             exit($this->alertInfo("相关参数未获取"));
         }
     }
+
 
     public function delete(Request $request)
     {
@@ -176,7 +165,6 @@ class Calendar extends Base
                 CalendarDetailModel::destroy(function($query) use ($ids) {
                     $query->where("id",$ids);
                 });
-
                 CalendarDetailUserModel::destroy(function($query) use ($ids) {
                     $query->whereIn("d_id",$ids);
                 });
@@ -189,23 +177,13 @@ class Calendar extends Base
         }
     }
 
+
     public function validation($data, $name)
     {
         $valid = $this->validate($data, $name);
         if (true !== $valid) {
             exit($this->responseToJson([], $valid, 201, false));
         }
-        if (isset($data['time'])) {
-            $time = explode(" - ", $data['time']);
-            $data['start_time'] = $time[0];
-            $data['end_time'] = $time[1];
-        } else {
-            exit($this->responseToJson([], '未获取到事件时间', 201, false));
-        }
-        if (!isset($data['c_id'])) {
-            exit($this->responseToJson([], '缺少必要参数', 201, false));
-        }
-        unset($data['is_hint']);
         return $data;
     }
 }

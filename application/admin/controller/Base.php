@@ -126,6 +126,7 @@ class Base extends Controller
         $tokenHeader = array_merge($tokenHeader, $basicHeader);
         $tokenService['body']['username'] = session("user_id");
         $token = $this->curlRequest($tokenService['url'], $tokenService['method'], $tokenHeader, $tokenService['body'], []);
+        Log::error($token);
         if (!isset($token['access_token'])) {
             exit($this->fetch('./500',[
                 'msg' => '获取token失败'

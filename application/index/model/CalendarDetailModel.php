@@ -15,7 +15,7 @@ use think\model\concern\SoftDelete;
 class CalendarDetailModel extends BaseModel
 {
 //    use SoftDelete;
-    protected $table = "t_sys_calendar_detail";
+    protected $table = "t_calendar_detail";
 //    protected $dateFormat = 'Y-m-d H:i:s';
 //    protected $autoWriteTimestamp = 'datetime';
 //    protected $deleteTime = 'deleted_at';

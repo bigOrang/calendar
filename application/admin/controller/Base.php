@@ -5,6 +5,7 @@ use app\admin\model\SpecialModel;
 use think\Controller;
 use think\Db;
 use think\facade\Log;
+use think\facade\Session;
 
 class Base extends Controller
 {
@@ -16,6 +17,10 @@ class Base extends Controller
         if (!empty($user_id) && !empty($school_id) && !empty($client_id)) {
             session('auth_status', 0);
             session('user_id', $user_id);
+            session('client_id', $client_id);
+            session("prefix_key", 47);
+            $prefix_key = session("prefix_key");
+            session("prefix", config("api.prefix.{$prefix_key}"));
             $res = $this->checkIsManager($user_id, $school_id, $client_id);
             if (empty($res) || $res['error_code'] != 1000) {
                 exit($this->fetch('./403',[
@@ -26,6 +31,7 @@ class Base extends Controller
                 session('auth_status', $res['extra']['status']);
                 session('school_id', $school_id);
                 session('teachers', $this->getTeacher());
+                session('userDetail', $this->getUserDetail());
             } else {
                exit($this->fetch('./403',[
                    'msg' => '没有权限'
@@ -93,13 +99,11 @@ class Base extends Controller
      */
     public function checkIsManager($user_id, $school_id, $client_id)
     {
-        $url = "http://47.100.19.248:8000/oauth/service/config/admin?user_id=" . $user_id . "&service_id=" . $client_id;
-        $header = [
-            "Content-Type:application/json;charset=UTF-8",
-            "school_id:" . $school_id,
-            'mdc_value:12345-54321-12345-54321-12345',
-        ];
-        return $this->curlRequest($url, 'get', $header,'',  []);
+        $isManagerService = config('api.isManager');
+        $url = session("prefix").$isManagerService['url'];
+        $url = sprintf($url, $user_id, $client_id);
+        $isManagerService['header']['school_id'] = $school_id;
+        return $this->curlRequest($url, $isManagerService['method'], $isManagerService['header'],'');
     }
 
 
@@ -115,53 +119,86 @@ class Base extends Controller
         ]);
     }
 
-
-    public function getTeacher()
+    public function getToken()
     {
-        //获取token
+        $client_id = session("client_id");
         $tokenService = config('api.getToken');
-        $teacherService = config('api.getTeacher');
-        $basicHeader[] = "Authorization: Basic ".base64_encode("{$tokenService['basic']['username']}:{$tokenService['basic']['password']}"); //添加头，在name和pass处填写对应账号密码
+        $basicHeader[] = "Authorization: Basic ".base64_encode("{$client_id}:{$tokenService['basic']['password']}");
+        //添加头，在name和pass处填写对应账号密码
         $tokenHeader = ['school_id:' . session("school_id")];
         $tokenHeader = array_merge($tokenHeader, $basicHeader);
         $tokenService['body']['username'] = session("user_id");
-        $token = $this->curlRequest($tokenService['url'], $tokenService['method'], $tokenHeader, $tokenService['body'], []);
-        Log::error($token);
+        $url = session("prefix"). $tokenService['url'];
+        $token = $this->curlRequest($url, $tokenService['method'], $tokenHeader, $tokenService['body']);
         if (!isset($token['access_token'])) {
             exit($this->fetch('./500',[
                 'msg' => '获取token失败'
             ]));
         } else {
-            $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
-            $teacherHeader = [
-                'school_id:' . session("school_id"),
-                'master_key:' . $teacherService['header']['master_key'],
-                'mdc_value:' . $teacherService['header']['mdc_value'],
-            ];
-            $teacherHeader = array_merge($teacherHeader, $bearerHeader);
-            $res = $this->curlRequest($teacherService['url'], $teacherService['method'], $teacherHeader, $teacherService['body'], []);
-            if ($res['error_code'] == 1000) {
-                return $res['extra'];
-            } else {
-                exit($this->fetch('./500',[
-                    'msg' => '获取教师记录失败'
-                ]));
-            }
+            session("token", $token);
+            return true;
         }
     }
 
 
-    function curlRequest($url, $method = 'POST', $header = [], $data = '', $contentType = ['Content-Type:application/json'])
+    public function getTeacher()
     {
-        $headers = array_merge($contentType, [
-            "Connection:Keep-Alive",
-            'Accept:application/json',
-        ], $header);
+        //获取token
+        $prefix = session("prefix");
+        $prefix_key = session("prefix_key");
+        if (!Session::has("token")) {
+            $this->getToken();
+        }
+        $token = session("token");
+        $teacherService = config('api.getTeacher');
+        $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
+        $teacherHeader = [
+            'school_id:' . session("school_id"),
+            'mdc_value:' . $teacherService['header']['mdc_value'],
+            'master_key:' . $teacherService["master_key_{$prefix_key}"],
+        ];
+        $teacherHeader = array_merge($teacherHeader, $bearerHeader);
+        $url = $prefix. $teacherService['url'];
+        $res = $this->curlRequest($url, $teacherService['method'], $teacherHeader, $teacherService['body']);
+        if (isset($res['error_code']) && $res['error_code'] == 1000) {
+            return $res['extra'];
+        } else {
+            exit($this->fetch('./500',[
+                'msg' => '获取教师记录失败'
+            ]));
+        }
+    }
+
+    public function getUserDetail()
+    {
+        $token = Session::has("token") ? session("token") : $this->getToken();
+        $userDetailService = config('api.getUserDetail');
+        $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
+        $userDetailHeader = [
+            'school_id:' . session("school_id"),
+            'mdc_value:' . $userDetailService['header']['mdc_value'],
+            'client_id:' . session("client_id"),
+        ];
+        $userDetailHeader = array_merge($userDetailHeader, $bearerHeader);
+        $url = session("prefix"). $userDetailService['url'];
+        $res = $this->curlRequest($url, $userDetailService['method'], $userDetailHeader, $userDetailService['body']);
+        if (isset($res['wid'])) {
+            return $res;
+        } else {
+            exit($this->fetch('./500',[
+                'msg' => '获取用户详情失败'
+            ]));
+        }
+    }
+
+
+    function curlRequest($url, $method = 'POST', $header = [], $data = '')
+    {
         // setting the curl parameters.
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_VERBOSE, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
         // turning off the server and peer verification(TrustManager Concept).
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
@@ -199,7 +236,8 @@ class Base extends Controller
             ];
         }
 
-        return is_string($response) ? json_decode($response, true) : $response;
+        $response = is_string($response) ? json_decode($response, true) : $response;
+        return $response;
     }
     /**
      * 导出CSV
@@ -295,6 +333,51 @@ class Base extends Controller
             return Db::connect(session('db-config_' . session("school_id")))->execute(DB::raw($q));
         } else {
             return false;
+        }
+    }
+
+
+    /**
+     * 推送消息配置
+     * @param string $type
+     * @param string $time
+     * @param $cron
+     * @param $title
+     * @param string $id
+     * @return mixed
+     */
+    protected function taskCalendar($type = "add", $time = "", $cron, $title, $id = '')
+    {
+        switch ($type) {
+            case "add":
+                $taskService = config("api.taskAddTest");
+                $taskService['body']['cronJobDesc'] = $title;
+                $taskService['body']['cronJobExp'] = $cron;
+                $taskService['body']['cronJobTimeShow'] = $time;
+                break;
+            case "edit":
+                $taskService = config("api.taskEditTest");
+                $taskService['url'] = sprintf($taskService['url'], $id);
+                break;
+            case "delete":
+                $taskService = config("api.taskDeleteTest");
+                $taskService['url'] = sprintf($taskService['url'], $id);
+                break;
+        }
+        $taskService['body']['schoolId'] = session("school_id");
+        $taskService['body'] = json_encode($taskService['body'], 320);
+        $taskHeader = ['Content-Type:application/json'];
+        $task = $this->curlRequest($taskService['url'], $taskService['method'], $taskHeader, $taskService['body']);
+        if (!isset($task['error_code']) && $task['error_code'] !== 1000) {
+            Log::error("taskCalendar---error--- : ". $task);
+            exit($this->fetch('./500',[
+                'msg' => '编辑推送内容失败'
+            ]));
+        } else {
+            if (isset($task['extra']))
+                return $task['extra'];
+            else
+                return true;
         }
     }
 }

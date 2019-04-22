@@ -14,11 +14,16 @@ class Base extends Controller
         $school_id = input('get.school_id');
         $client_id = input('get.client_id');
         if (!empty($user_id) && !empty($school_id) && !empty($client_id)) {
+            session('index_auth_status', 0);
             session('index_user_id', $user_id);
-            session('index_school_id', $school_id);
             session('index_client_id', $client_id);
-            session('index_auth_status',1);
-            session("teacher", $this->getTeacher());
+            session("index_prefix_key", 47);
+            $prefix_key = session("index_prefix_key");
+            session("index_prefix", config("api.prefix.{$prefix_key}"));
+            session('index_auth_status', 1);
+            session('index_school_id', $school_id);
+            session('index_teachers', $this->getTeacher());
+            session('index_userDetail', $this->getUserDetail());
         } else {
             if (empty(session('index_auth_status'))) {
                 exit($this->fetch('./403',[
@@ -72,51 +77,115 @@ class Base extends Controller
         ], JSON_UNESCAPED_UNICODE);
     }
 
-    public function getTeacher()
+    /**
+     * 判断是否为管理员
+     * @param $user_id
+     * @param $school_id
+     * @param $client_id
+     * @return array|mixed
+     */
+    public function checkIsManager($user_id, $school_id, $client_id)
     {
-        //获取token
+        $isManagerService = config('api.isManager');
+        $url = session("index_prefix").$isManagerService['url'];
+        $url = sprintf($url, $user_id, $client_id);
+        $isManagerService['header']['school_id'] = $school_id;
+        return $this->curlRequest($url, $isManagerService['method'], $isManagerService['header'],'');
+    }
+
+
+    /**
+     * 消息提示模板
+     * @param string $msg
+     * @return mixed
+     */
+    protected function alertInfo($msg = '')
+    {
+        return $this->fetch('./common/alert-info', [
+            'msg' => $msg,
+        ]);
+    }
+
+    public function getToken()
+    {
+        $client_id = session("index_client_id");
         $tokenService = config('api.getToken');
-        $teacherService = config('api.getTeacher');
-        $basicHeader[] = "Authorization: Basic ".base64_encode("{$tokenService['basic']['username']}:{$tokenService['basic']['password']}"); //添加头，在name和pass处填写对应账号密码
+        $basicHeader[] = "Authorization: Basic ".base64_encode("{$client_id}:{$tokenService['basic']['password']}");
+        //添加头，在name和pass处填写对应账号密码
         $tokenHeader = ['school_id:' . session("index_school_id")];
         $tokenHeader = array_merge($tokenHeader, $basicHeader);
         $tokenService['body']['username'] = session("index_user_id");
-        $token = $this->curlRequest($tokenService['url'], $tokenService['method'], $tokenHeader, $tokenService['body'], []);
+        $url = session("index_prefix"). $tokenService['url'];
+        $token = $this->curlRequest($url, $tokenService['method'], $tokenHeader, $tokenService['body']);
         if (!isset($token['access_token'])) {
             exit($this->fetch('./500',[
                 'msg' => '获取token失败'
             ]));
         } else {
-            $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
-            $teacherHeader = [
-                'school_id:' . session("index_school_id"),
-                'master_key:' . $teacherService['header']['master_key'],
-                'mdc_value:' . $teacherService['header']['mdc_value'],
-            ];
-            $teacherHeader = array_merge($teacherHeader, $bearerHeader);
-            $res = $this->curlRequest($teacherService['url'], $teacherService['method'], $teacherHeader, $teacherService['body'], []);
-            if ($res['error_code'] == 1000) {
-                return $res['extra'];
-            } else {
-                exit($this->fetch('./500',[
-                    'msg' => '获取教师记录失败'
-                ]));
-            }
+            session("index_token", $token);
+            return true;
         }
     }
 
 
-    function curlRequest($url, $method = 'POST', $header = [], $data = '', $contentType = ['Content-Type:application/json'])
+    public function getTeacher()
     {
-        $headers = array_merge($contentType, [
-            "Connection:Keep-Alive",
-            'Accept:application/json',
-        ], $header);
+        //获取token
+        $prefix = session("index_prefix");
+        $prefix_key = session("index_prefix_key");
+        if (!Session::has("index_token")) {
+            $this->getToken();
+        }
+        $token = session("index_token");
+        $teacherService = config('api.getTeacher');
+        $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
+        $teacherHeader = [
+            'school_id:' . session("index_school_id"),
+            'mdc_value:' . $teacherService['header']['mdc_value'],
+            'master_key:' . $teacherService["master_key_{$prefix_key}"],
+        ];
+        $teacherHeader = array_merge($teacherHeader, $bearerHeader);
+        $url = $prefix. $teacherService['url'];
+        $res = $this->curlRequest($url, $teacherService['method'], $teacherHeader, $teacherService['body']);
+        if (isset($res['error_code']) && $res['error_code'] == 1000) {
+            return $res['extra'];
+        } else {
+            exit($this->fetch('./500',[
+                'msg' => '获取教师记录失败'
+            ]));
+        }
+    }
+
+    public function getUserDetail()
+    {
+        $token = Session::has("index_token") ? session("index_token") : $this->getToken();
+        $userDetailService = config('api.getUserDetail');
+        $bearerHeader[] = "Authorization: Bearer ".$token['access_token'];
+        $userDetailHeader = [
+            'school_id:' . session("index_school_id"),
+            'mdc_value:' . $userDetailService['header']['mdc_value'],
+            'client_id:' . session("index_client_id"),
+        ];
+        $userDetailHeader = array_merge($userDetailHeader, $bearerHeader);
+        $url = session("index_prefix"). $userDetailService['url'];
+        $res = $this->curlRequest($url, $userDetailService['method'], $userDetailHeader, $userDetailService['body']);
+        if (isset($res['wid'])) {
+            return $res;
+        } else {
+            exit($this->fetch('./500',[
+                'msg' => '获取用户详情失败'
+            ]));
+        }
+    }
+
+
+    function curlRequest($url, $method = 'POST', $header = [], $data = '')
+    {
         // setting the curl parameters.
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_VERBOSE, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
         // turning off the server and peer verification(TrustManager Concept).
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
@@ -154,7 +223,8 @@ class Base extends Controller
             ];
         }
 
-        return is_string($response) ? json_decode($response, true) : $response;
+        $response = is_string($response) ? json_decode($response, true) : $response;
+        return $response;
     }
     /**
      * 导出CSV
@@ -199,16 +269,28 @@ class Base extends Controller
         echo ob_get_clean();
     }
 
+
     /**
-     * 消息提示模板
-     * @param string $msg
-     * @return mixed
+     * 递归解析节点进行排序
+     * @param array $data
+     * @param int $pid
      */
-    protected function alertInfo($msg = '')
+    protected function parseNode($data = [], $pid = 0)
     {
-        return $this->fetch('./common/alert-info', [
-            'msg' => $msg,
-        ]);
+        $sort   = 1;
+        $result = [];
+        foreach ($data as $item) {
+            $result[] = [
+                'id'   => (int)$item['id'],
+                't_parent_id'  => (int)$pid,
+                'sort' => $sort,
+            ];
+            if (isset($item['children'])) {
+                $result = array_merge($result, $this->parseNode($item['children'], $item['id']));
+            }
+            $sort ++;
+        }
+        return $result;
     }
 
 
@@ -238,6 +320,51 @@ class Base extends Controller
             return Db::connect(session('index_db-config_' . session("index_school_id")))->execute(DB::raw($q));
         } else {
             return false;
+        }
+    }
+
+
+    /**
+     * 推送消息配置
+     * @param string $type
+     * @param string $time
+     * @param $cron
+     * @param $title
+     * @param string $id
+     * @return mixed
+     */
+    protected function taskCalendar($type = "add", $time = "", $cron, $title, $id = '')
+    {
+        switch ($type) {
+            case "add":
+                $taskService = config("api.taskAddTest");
+                $taskService['body']['cronJobDesc'] = $title;
+                $taskService['body']['cronJobExp'] = $cron;
+                $taskService['body']['cronJobTimeShow'] = $time;
+                break;
+            case "edit":
+                $taskService = config("api.taskEditTest");
+                $taskService['url'] = sprintf($taskService['url'], $id);
+                break;
+            case "delete":
+                $taskService = config("api.taskDeleteTest");
+                $taskService['url'] = sprintf($taskService['url'], $id);
+                break;
+        }
+        $taskService['body']['schoolId'] = session("index_school_id");
+        $taskService['body'] = json_encode($taskService['body'], 320);
+        $taskHeader = ['Content-Type:application/json'];
+        $task = $this->curlRequest($taskService['url'], $taskService['method'], $taskHeader, $taskService['body']);
+        if (!isset($task['error_code']) && $task['error_code'] !== 1000) {
+            Log::error("taskCalendar---error--- : ". $task);
+            exit($this->fetch('./500',[
+                'msg' => '编辑推送内容失败'
+            ]));
+        } else {
+            if (isset($task['extra']))
+                return $task['extra'];
+            else
+                return true;
         }
     }
 

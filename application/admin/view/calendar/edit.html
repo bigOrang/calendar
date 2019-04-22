@@ -59,10 +59,10 @@
                         <label class="col-sm-3 control-label">推送方式</label>
                         <div class="col-sm-8">
                             <div class="col-sm-3 checkbox i-checks">
-                                <label><input type="checkbox" value="2" class="push" name="push_type" {if in_array(2, $info.push_type)} checked {/if}><i></i> 短信</label>
+                                <label><input type="checkbox" value="1" class="push" name="push_type" {if in_array(1, $info.push_type)} checked {/if}><i></i> 短信</label>
                             </div>
                             <div class="col-sm-3 checkbox i-checks">
-                                <label><input type="checkbox" value="3" class="push" name="push_type" {if in_array(3, $info.push_type)} checked {/if}><i></i> 微信</label>
+                                <label><input type="checkbox" value="2" class="push" name="push_type" {if in_array(2, $info.push_type)} checked {/if}><i></i> 微信</label>
                             </div>
                         </div>
                     </div>
@@ -85,6 +85,7 @@
                     <div class="col-sm-6 col-sm-offset-3">
                         <input type="hidden" value="{$c_id}" name="c_id">
                         <input type="hidden" value="{$info.id}" name="id">
+                        <input type="hidden" value="{$info.cron_ids}" name="cron_ids">
                         <button type="submit" id="submit" class="btn btn-w-m btn-primary">提交</button>
                         <button type="reset" onclick="location.reload()" class="btn btn-w-m btn-warning">重置</button>
                     </div>
@@ -177,10 +178,10 @@
                 });
                 return false;
             }
-            var type = typeof formData['push_type'];
-            if (type === 'object') {
-                formData['push_type'] = 1;
-            }
+            // var type = typeof formData['push_type'];
+            // if (type === 'object') {
+            //     formData['push_type'] = 1;
+            // }
         }
         return ajaxPostData(formData, "{:url('calendar/update')}");
     });

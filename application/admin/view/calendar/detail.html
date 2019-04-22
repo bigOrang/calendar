@@ -93,11 +93,13 @@
         minTime: '06:00:00',
         maxTime: '22:00:00',
         defaultView: 'month',
+        defaultDate: '{$is_in}',
         handleWindowResize: true,
         currentTimezone: 'Asia/Beijing',
+        timezone: 'local',
         height: $(window).height() - 200,
         header: {
-            left: 'prev,next today',
+            left: 'prevYear,prev,next,nextYear today',
             center: 'title',
             right: 'month,agendaWeek,agendaDay'
         },
@@ -106,8 +108,12 @@
             month: '月',
             week: '周',
             day: '日',
-            prev: '上一月',
-            next: '下一月'
+            prev: '<',
+            next: '>',
+            prevYear: '｜',
+            nextYear: '>>|'
+            // prev: '上一月',
+            // next: '下一月'
         },
         droppable: true, // this allows things to be dropped onto the calendar !!!
         selectable: true,
@@ -178,10 +184,13 @@
             var today = (new Date()).getTime();
             if(startD < today)
             {
-                // swal("提示", "请选择今天之后的日子", "info");
+                swal("提示", "所选时间应在当前时间之后", "info");
+                return false;
+            } else {
+                var url = addUrl.replace("START",startD).replace("END",endD);
+                dialog('新增事件', url, 800, 550);
             }
-            var url = addUrl.replace("START",startD).replace("END",endD);
-            dialog('新增事件', url, 800, 550);
+
             // $calendarObj('unselect');
         },
         events: events

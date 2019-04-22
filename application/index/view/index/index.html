@@ -42,6 +42,10 @@ html {
     height: 40px;
     line-height: 40px;
 }
+.console .is_manager {
+    height: 40px;
+    line-height: 40px;
+}
 .layui-header h1{
     font-size: 17px;
     font-weight: 500;
@@ -259,7 +263,7 @@ html {
                     var i = 0;
                     $.each(res.data , function (key, val) {
                         i++;
-                        kendoConsole.log(kendo.toString(calendar.current(), 'yyyy-MM-dd') + " 事件 "+ i  +" :: " + val.title, false, undefined, val.id);
+                        kendoConsole.log(kendo.toString(calendar.current(), 'yyyy-MM-dd') + " 事件 "+ i  +" :: " + val.title, false, undefined, val.id, val.is_manager);
                     })
                 }
                 kendoConsole.error("操作日志");

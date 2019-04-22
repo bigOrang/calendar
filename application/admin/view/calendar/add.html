@@ -62,10 +62,10 @@
                         <label class="col-sm-3 control-label">推送方式</label>
                         <div class="col-sm-8">
                             <div class="col-sm-3 checkbox i-checks">
-                                <label><input type="checkbox" value="2" name="push_type" checked=""><i></i> 短信</label>
+                                <label><input type="checkbox" value="1" name="push_type" checked=""><i></i> 短信</label>
                             </div>
                             <div class="col-sm-3 checkbox i-checks">
-                                <label><input type="checkbox" value="3" name="push_type"><i></i> 微信</label>
+                                <label><input type="checkbox" value="2" name="push_type"><i></i> 微信</label>
                             </div>
                         </div>
                     </div>
@@ -174,10 +174,10 @@
                 });
                 return false;
             }
-            var type = typeof formData['push_type'];
-            if (type === 'object') {
-                formData['push_type'] = 1;
-            }
+            // var type = typeof formData['push_type'];
+            // if (type === 'object') {
+            //     formData['push_type'] = 1;
+            // }
         }
         return ajaxPostData(formData, "{:url('calendar/add')}",true);
     });

@@ -14,14 +14,15 @@ class Base extends Controller
         $school_id = input('get.school_id');
         $client_id = input('get.client_id');
         if (!empty($user_id) && !empty($school_id) && !empty($client_id)) {
-            session('index_auth_status', 0);
+            Session::clear();
+            session('index_auth_status', 1);
             session('index_user_id', $user_id);
             session('index_client_id', $client_id);
+            session('index_school_id', $school_id);
             session("index_prefix_key", 47);
             $prefix_key = session("index_prefix_key");
             session("index_prefix", config("api.prefix.{$prefix_key}"));
             session('index_auth_status', 1);
-            session('index_school_id', $school_id);
             session('index_teachers', $this->getTeacher());
             session('index_userDetail', $this->getUserDetail());
         } else {

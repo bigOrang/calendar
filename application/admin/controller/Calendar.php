@@ -43,7 +43,7 @@ class Calendar extends Base
         if ($request->has("id") && !empty($request->param("id"))) {
             $cId = $request->param("id");
             $result = CalendarModel::where("id", $cId)->find()->toArray();
-            $data = CalendarDetailModel::where("c_id", $cId)->field("id,title,start_time as start,end_time as end,'bg-purple' as className")->select()->toArray();
+            $data = CalendarDetailModel::where("c_id", $cId)->field("id,title,start_time as start,end_time as end,CASE WHEN is_manager <> 1 THEN 'bg-info' ELSE 'bg-success' END  as className")->select()->toArray();
             foreach ($data as $key=>$value) {
                 if (strtotime($value['start']) !== strtotime($value['end'])) {
                     $data[$key]['end'] = date("Y-m-d", strtotime($value['end'] ."+1 day"));
@@ -68,7 +68,7 @@ class Calendar extends Base
     public function add(Request $request) {
         if ($request->isPost()) {
             $requestData = $this->validation($request->post(), 'CalendarDetail');
-            Db::startTrans();
+            Db::connect(session('db-config_' . session("school_id")))->startTrans();
             try {
                 $userDetail = session("userDetail");
                 $calendarDetailModel = new CalendarDetailModel();
@@ -108,10 +108,10 @@ class Calendar extends Base
                     ]);
                 }
                 // 提交事务
-                Db::commit();
+                Db::connect(session('db-config_' . session("school_id")))->commit();
                 return $this->responseToJson([],'添加成功');
             } catch (\Exception $e) { // 回滚事务
-                Db::rollback();
+                Db::connect(session('db-config_' . session("school_id")))->rollback();
                 return $this->responseToJson([],'添加失败'.$e->getMessage() , 201);
             }
         }
@@ -141,6 +141,7 @@ class Calendar extends Base
         $calendarUsersModel = new CalendarDetailUserModel();
         if ($request->isPost()) {
             $requestData = $this->validation($request->post(), 'CalendarDetail');
+            Db::connect(session('db-config_' . session("school_id")))->startTrans();
             try {
                 $userDetail = session("userDetail");
                 if ($requestData['push_type'] !== 0) {
@@ -182,8 +183,10 @@ class Calendar extends Base
                         'cron_ids'   => ''
                     ]);
                 }
+                Db::connect(session('db-config_' . session("school_id")))->commit();
                 return $this->responseToJson([],'编辑成功');
             } catch (\Exception $e) {
+                Db::connect(session('db-config_' . session("school_id")))->rollback();
                 return $this->responseToJson([],'编辑失败'.$e->getMessage() , 201);
             }
         }
@@ -217,7 +220,7 @@ class Calendar extends Base
     {
         if ($request->has("ids") && !empty($request->param("ids"))) {
             $ids = $request->param("ids");
-            Db::startTrans();
+            Db::connect(session('db-config_' . session("school_id")))->startTrans();
             try{
                 $cronIds = CalendarDetailModel::where("id", $ids)->value("cron_ids");
                 CalendarDetailModel::destroy(function($query) use ($ids) {
@@ -232,11 +235,11 @@ class Calendar extends Base
                     });
                 }
                 // 提交事务
-                Db::commit();
+                Db::connect(session('db-config_' . session("school_id")))->commit();
                 return $this->responseToJson([],'删除成功' , 200);
             }catch (Exception $e) {
                 // 回滚事务
-                Db::rollback();
+                Db::connect(session('db-config_' . session("school_id")))->rollback();
                 return $this->responseToJson([],'删除失败'.$e->getMessage() , 201);
             }
         } else {

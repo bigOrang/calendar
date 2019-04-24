@@ -6,6 +6,7 @@ use app\index\model\CalendarDetailUserModel;
 use app\index\model\CalendarModel;
 use think\Db;
 use think\Exception;
+use think\facade\Log;
 use think\facade\Session;
 use think\Request;
 
@@ -24,7 +25,13 @@ class Index extends Base
                 ->where("end_time",">", date("Y-m-d", time()))->value("id");
             session("index_c_id", $getCId);
         }
-        $events = $calendarDetailModel->where("c_id", $getCId)->field("start_time, end_time")->select()->toArray();
+        $userDetail = session("index_userDetail");
+        $events = $calendarDetailModel->where("c_id", $getCId)->field("start_time, end_time")
+            ->where(function ($query) use ($userDetail) {
+                $query ->where("is_manager", 1)
+                    ->whereOr("release_user_code", $userDetail['user_id']);
+            })
+            ->select()->toArray();
         foreach ($events as $key=>$value) {
             $dates = array_merge($dates, $this->getDateFromRange($value['start_time'], $value['end_time']));
         }
@@ -42,12 +49,14 @@ class Index extends Base
         }
         $calendarDetailModel = new CalendarDetailModel();
         $getCId = session("index_c_id");
-        $userDetail = session("userDetail");
+        $userDetail = session("index_userDetail");
         $events = $calendarDetailModel->where("c_id", $getCId)
             ->where("start_time","<=", date("Y-m-d", $time))
             ->where("end_time",">=", date("Y-m-d", $time))
-            ->where("is_manager", 1)
-            ->where("release_user_code", $userDetail['user_id'])
+            ->where(function ($query) use ($userDetail) {
+                $query ->where("is_manager", 1)
+                    ->whereOr("release_user_code", $userDetail['user_id']);
+            })
             ->order("id","desc")
             ->select();
         return $this->responseToJson($events, 'success', 200);
@@ -57,20 +66,21 @@ class Index extends Base
     {
         if ($request->isPost()) {
             $requestData = $this->validation($request->post(), 'CalendarDetail');
-            Db::startTrans();
+            Db::connect(session('index_db-config_' . session("index_school_id")))->startTrans();
             try {
-                $userDetail = session("userDetail");
+                $userDetail = session("index_userDetail");
                 $calendarDetailModel = new CalendarDetailModel();
                 if ($requestData['push_type'] !== 0) {
                     $insertArr = $task = [];
                     $task = $this->taskOperational($requestData);
                     $id = $calendarDetailModel->insertGetId([
-                        'c_id'       => $requestData['c_id'],
+                        'c_id'       => session("index_c_id"),
                         'title'      => $requestData['title'],
                         'start_time' => $requestData['start_time'],
                         'end_time'   => $requestData['end_time'],
                         'push_type'  => $requestData['push_type'],
-                        'cron_ids'    => $task,
+                        'cron_ids'   => $task,
+                        'is_manager' => '0',
                         'release_user_code'    => $userDetail["user_id"],
                         'release_user_name'    => $userDetail["user_name"],
                     ]);
@@ -97,10 +107,10 @@ class Index extends Base
                     ]);
                 }
                 // 提交事务
-                Db::commit();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->commit();
                 return $this->responseToJson(['target'=>url("index/index")],'添加成功');
             } catch (\Exception $e) { // 回滚事务
-                Db::rollback();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->rollback();
                 return $this->responseToJson([],'添加失败'.$e->getMessage() , 201);
             }
         }
@@ -114,9 +124,9 @@ class Index extends Base
         $calendarUsersModel = new CalendarDetailUserModel();
         if ($request->isPost()) {
             $requestData = $this->validation($request->post(), 'CalendarDetail');
-            Db::startTrans();
+            Db::connect(session('index_db-config_' . session("index_school_id")))->startTrans();
             try {
-                $userDetail = session("userDetail");
+                $userDetail = session("index_userDetail");
                 if ($requestData['push_type'] !== 0) {
                     $insertArr = $task = [];
                     //删除定时任务再添加
@@ -157,11 +167,11 @@ class Index extends Base
                     ]);
                 }
                 // 提交事务
-                Db::commit();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->commit();
                 return $this->responseToJson(['target'=>url("index/index")],'编辑成功');
             } catch (\Exception $e) {
                 // 回滚事务
-                Db::rollback();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->rollback();
                 return $this->responseToJson([],'编辑失败'.$e->getMessage() , 201);
             }
         }
@@ -171,14 +181,18 @@ class Index extends Base
             if ($data['push_type'] !== 0) {
                 $data['is_hint'] = 1;
                 $data['users'] = $calendarUsersModel->where("d_id", $id)->column("user_code");
-                $data['push_type'] = $data['push_type'] == 1 ? [2,3] : [$data['push_type']];
+                $decbin = decbin($data['push_type']);
+                $push_type = array_keys(array_filter(str_split($decbin)));
+                foreach ($push_type as $key=>$value)
+                    $push_type[$key] = (intval($value)+1);
+                $data['push_type'] = $push_type;
             } else {
                 $data['is_hint'] = 0;
                 $data['push_type'] = [];
                 $data['users'] = [];
             }
             $this->assign("info", $data);
-            $this->assign("teacher", session("teacher"));
+            $this->assign("teacher", session("index_teachers"));
             return $this->fetch('./index/edit');
         } else {
             exit($this->alertInfo("相关参数未获取"));
@@ -190,7 +204,7 @@ class Index extends Base
     {
         if ($request->has("ids") && !empty($request->param("ids"))) {
             $ids = $request->param("ids");
-            Db::startTrans();
+            Db::connect(session('index_db-config_' . session("index_school_id")))->startTrans();
             try{
                 $cronIds = CalendarDetailModel::where("id", $ids)->value("cron_ids");
                 CalendarDetailModel::destroy(function($query) use ($ids) {
@@ -205,11 +219,11 @@ class Index extends Base
                     });
                 }
                 // 提交事务
-                Db::commit();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->commit();
                 return $this->responseToJson([],'删除成功' , 200);
             }catch (Exception $e) {
                 // 回滚事务
-                Db::rollback();
+                Db::connect(session('index_db-config_' . session("index_school_id")))->rollback();
                 return $this->responseToJson([],'删除失败'.$e->getMessage() , 201);
             }
         } else {
@@ -276,8 +290,12 @@ class Index extends Base
             exit($this->responseToJson([], $valid, 201, false));
         }
         $push_type = 0;
-        foreach ($data['push_type'] as $key=>$value) {
-            $push_type += pow(2,$value-1);
+        if (is_array($data['push_type'])) {
+            foreach ($data['push_type'] as $key=>$value) {
+                $push_type += pow(2,$value-1);
+            }
+        } else {
+            $push_type += pow(2,$data['push_type']-1);
         }
         $data['push_type'] = $push_type;
         return $data;

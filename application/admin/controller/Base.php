@@ -237,6 +237,7 @@ class Base extends Controller
         }
 
         $response = is_string($response) ? json_decode($response, true) : $response;
+        Log::error($response);
         return $response;
     }
     /**

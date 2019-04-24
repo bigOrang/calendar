@@ -278,7 +278,7 @@
                                         </li>
                                     </ul>
                                 </li>
-                    </ul>
+                            </ul>
                         </div>
                     </div>
                 </form>
@@ -308,7 +308,7 @@
                         <input type="text" id='showTimeEPicker' data-options='{"type":"date"}' class="mui-input-clear" placeholder="选择结束日期 ...">
                     </div>
                     <div class="mui-input-row" style="height: auto">
-                        <label>咨询内容 <span style="color:red">*</span></label>
+                        <label>事件内容 <span style="color:red">*</span></label>
                         <textarea name="title" id="title" cols="30" rows="3" maxlength="100" placeholder="请输入事件内容..."></textarea>
                     </div>
                     <div class="mui-input-row" id="radio-all">
@@ -352,7 +352,7 @@
                     <div id='userResult' class="ui-alert"></div>
                     <div class="mui-button-row">
                         <!--<input type="hidden" value="" id="category">-->
-                        <button type="reset" class="mui-btn mui-btn-danger" >重置</button>
+                        <button type="reset" id="reset" class="mui-btn mui-btn-danger" >重置</button>
                         <button type="submit" class="mui-btn mui-btn-primary" >确认</button>
                     </div>
                 </form>
@@ -387,6 +387,11 @@
                 }
             });
         })
+        var resetButton = document.getElementById("reset");
+        resetButton.addEventListener("tap", function () {
+            document.getElementById('show').style.display = 'block';
+            document.getElementById('radio_allow').checked = true;
+        });
     });
     Parsley.on('form:submit', function(e) {
         var formData = $('form').serializeObject();
@@ -406,14 +411,15 @@
         if (formData.title.length > 100) {
             error = '【事件内容】内容长度过长[100字符]';
         }
-        if (formData.push_type === '') {
-            error = '请选择【推送方式】选项';
-        }
         if (formData['is_hint'] === '0') {
             formData['push_type'] = 0;
         } else {
+            if (!formData.hasOwnProperty("push_type")) {
+                error = '请选择【推送方式】选项';
+            }
             if (!formData.hasOwnProperty("users")) {
-                error = '请选择本事件需要推送的用户';
+                formData['users'] = ["{$Think.session.index_userDetail.user_id}"+"_"+"{$Think.session.index_userDetail.user_name}"];
+                // error = '请选择本事件需要推送的用户';
             }
             // var type = typeof formData['push_type'];
             // if (type === 'object') {
@@ -551,14 +557,19 @@
             showSTime.addEventListener('tap', function () {
                 var _self = this;
                 var options = {};
+                var year = new Date().getFullYear() ;
+                var month = new Date().getMonth();
+                var day = new Date().getDate();
                 if (timeEDate.value !== '') {
                     options['type'] = 'date';
                     // options['value'] = '2015-01-01';
                     var arr = timeEDate.value.split('-');
                     arr[1] = (arr[1]-1);
+                    options['beginDate'] =  new Date(year, month, day);
                     options['endDate'] = new Date(arr[0], arr[1], arr[2]);
                 } else {
                     options['type'] = 'date';
+                    options['beginDate'] =  new Date(year, month, day);
                     // options['value'] = '2015-01-01';
                 }
                 var id = this.getAttribute('id');
